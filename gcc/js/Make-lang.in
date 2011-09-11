@@ -1,0 +1,141 @@
+JS_EXES = js
+
+.phony: js
+
+# Use strict warnings for this front end.
+js-warn = $(STRICT_WARN)
+
+GCCJS_INSTALL_NAME := $(shell echo gccjs|sed '$(program_transform_name)')
+GCCJS_TARGET_INSTALL_NAME := $(target_noncanonical)-$(shell echo gccjs|sed '$(program_transform_name)')
+
+js: gccjs$(exeext) gjs1$(exeext)
+
+GJS_CFLAGS := -I${srcdir}/js -O0 -g3
+
+js-lexer.o: $(GCCJS_HEADERS) $(srcdir)/js/js-lexer.l js-parser.o
+	$(FLEX) -P js_ -o lex.js.c $(srcdir)/js/js-lexer.l
+	$(CC) $(ALL_COMPILERFLAGS) $(GJS_CFLAGS) $(INCLUDES) \
+	$(LDFLAGS) -c -o $@ lex.js.c
+
+GCCJS_HEADERS=$(srcdir)/js/js-lang.c
+
+js-parser.o: $(GCCJS_HEADERS) $(srcdir)/js/js-parser.y
+	$(BISON) -p js_ -v --defines=y.js.h --output=y.js.c \
+	$(srcdir)/js/js-parser.y
+	$(CC) $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(GJS_CFLAGS) $(INCLUDES) \
+	$(LDFLAGS) -c -o $@ y.js.c
+
+js-lang.o: $(GCCJS_HEADERS) $(srcdir)/js/js-lang.c $(CONFIG_H) $(SYSTEM_H) coretypes.h $(TM_H) \
+  $(FLAGS_H) toplev.h $(GGC_H) $(TREE_H) $(DIAGNOSTIC_H) input.h options.h opts.h \
+  gt-js-js-lang.h gtype-js.h main.c
+	$(CC) $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(GJS_CFLAGS) $(INCLUDES) \
+	$(LDFLAGS) -c -o $@ $(srcdir)/js/js-lang.c
+#
+#js-stmt.o: $(GCCJS_HEADERS) $(srcdir)/js/js-stmt.c $(srcdir)/js/js-symbol.c $(CONFIG_H) $(SYSTEM_H) coretypes.h $(TM_H) \
+#  $(FLAGS_H) toplev.h $(GGC_H) $(TREE_H) $(DIAGNOSTIC_H) input.h options.h opts.h \
+#  gt-js-js-lang.h gtype-js.h
+#	$(CC) $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(GJS_CFLAGS) $(INCLUDES) \
+#	$(LDFLAGS) -c -o $@ $(srcdir)/js/js-stmt.c
+
+js-decl.o: $(GCCJS_HEADERS) $(srcdir)/js/js-decl.c $(CONFIG_H) $(SYSTEM_H) coretypes.h $(TM_H) \
+  $(FLAGS_H) toplev.h $(GGC_H) $(TREE_H) $(DIAGNOSTIC_H) input.h options.h opts.h \
+  gt-js-js-lang.h gtype-js.h
+	$(CC) $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(GJS_CFLAGS) $(INCLUDES) \
+	$(LDFLAGS) -c -o $@ $(srcdir)/js/js-decl.c
+
+js-buffer.o: $(GCCJS_HEADERS) $(srcdir)/js/js-buffer.c $(CONFIG_H) $(SYSTEM_H) coretypes.h $(TM_H) \
+  $(FLAGS_H) toplev.h $(GGC_H) $(TREE_H) $(DIAGNOSTIC_H) input.h options.h opts.h \
+  gt-js-js-lang.h gtype-js.h
+	$(CC) $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(GJS_CFLAGS) $(INCLUDES) \
+		$(LDFLAGS) -c -o $@ $(srcdir)/js/js-buffer.c
+#
+GJS_OBJS = \
+	js-parser.o \
+	js-lexer.o \
+	js-lang.o \
+	js-buffer.o \
+	js-decl.o
+
+#	js-decl.o \
+#	js-types.o \
+#	js-vec.o \
+#	js-runtime.o
+
+GCCJS_C_OBJS = $(GJS_OBJS) $(BACKEND) $(LIBSDEPS) attribs.o
+gjs1$(exeext): $(GCCJS_C_OBJS)
+	$(CC) $(ALL_CFLAGS) $(GJS_CFLAGS) $(LDFLAGS) -o $@ $(GCCJS_C_OBJS) \
+	$(GMPLIBS) $(LIBS) $(BACKENDLIBS) 
+
+js-spec.o: $(srcdir)/js/js-spec.c $(CONFIG_H) $(SYSTEM_H) \
+  coretypes.h $(DIAGNOSTIC_H) $(TREE_H) $(FLAGS_H) toplev.h langhooks.h $(TM_H)
+	$(CC) $(GJS_CFLAGS) $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(DRIVER_DEFINES) \
+		$(INCLUDES) $(LDFLAGS) -c -o $@ $(srcdir)/js/js-spec.c
+
+GCCJS_D_OBJS = $(GCC_OBJS) js-spec.o version.o prefix.o intl.o
+gccjs$(exeext): $(GCCJS_D_OBJS) $(EXTRA_GCC_OBJS) $(LIBDEPS)
+	$(LINKER) $(ALL_LINKERFLAGS) $(LDFLAGS) -o $@ \
+	  $(GCCJS_D_OBJS) $(EXTRA_GCC_OBJS) $(LIBS)
+
+js.srcextra: 
+js.all.cross:
+
+js.start.encap:
+js.rest.encap:
+js.man:
+js.srcman:
+
+js.mostlyclean:
+	cd $(srcdir)/js; rm -f *.o y.tab.h y.tab.c lex.yy.c
+
+js.clean: js.mostlyclean
+
+js.tags: force
+	cd $(srcdir)/js; etags -o TAGS.sub *.y *.l *.c *.h; \
+	etags --include TAGS.sub --include ../TAGS.sub
+
+js.info: 
+js.srcinfo: 
+js.dvi: 
+js.pdf: 
+doc/js.info: 
+doc/js.dvi: 
+doc/js.pdf: 
+js.html: 
+
+js.install-common: installdirs
+	-rm -f $(DESTDIR)$(bindir)/$(GCCJS_INSTALL_NAME)$(exeext)
+	-rm -f $(DESTDIR)$(bindir)/$(GCCJS_TARGET_INSTALL_NAME)$(exeext)
+	$(INSTALL_PROGRAM) gccjs$(exeext) $(DESTDIR)$(bindir)/$(GCCJS_INSTALL_NAME)$(exeext)
+	if test -f $(DESTDIR)$(bindir)$(GCCJS_TARGET_INSTALL_NAME)$(exeext); then \
+	  :; \
+	else \
+	  cd $(DESTDIR)$(bindir) && \
+	   $(LN) $(GCCJS_INSTALL_NAME)$(exeext) $(GCCJS_TARGET_INSTALL_NAME)$(exeext); \
+	fi
+
+js.install-plugin:
+
+js.uninstall:
+	-rm -rf $(DESTDIR)/$(bindir)/$(GCCJS_INSTALL_NAME)$(exeext)
+
+js.install-info: 
+js.install-pdf: 
+js.install-man:
+
+# Stage hooks:
+# The main makefile has already created stage?/js.
+
+js.stage1: stage1-start
+	-mv js/*$(objext) stage1/js
+js.stage2: stage2-start
+	-mv js/*$(objext) stage2/js
+js.stage3: stage3-start
+	-mv js/*$(objext) stage3/js
+js.stage4: stage4-start
+	-mv js/*$(objext) stage4/js
+js.stageprofile: stageprofile-start
+	-mv js/*$(objext) stageprofile/js
+js.stagefeedback: stagefeedback-start
+	-mv js/*$(objext) stagefeedback/js
+
+config.status: js/config-lang.in

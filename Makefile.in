@@ -976,6 +976,7 @@ configure-target:  \
     maybe-configure-target-qthreads \
     maybe-configure-target-rda \
     maybe-configure-target-libada \
+    maybe-configure-target-libgjs \
     maybe-configure-target-libgomp
 
 # The target built for a native non-bootstrap build.
@@ -1160,6 +1161,7 @@ all-target: maybe-all-target-boehm-gc
 all-target: maybe-all-target-qthreads
 all-target: maybe-all-target-rda
 all-target: maybe-all-target-libada
+all-target: maybe-all-target-libgjs
 @if target-libgomp-no-bootstrap
 all-target: maybe-all-target-libgomp
 @endif target-libgomp-no-bootstrap
@@ -1283,6 +1285,7 @@ info-target: maybe-info-target-boehm-gc
 info-target: maybe-info-target-qthreads
 info-target: maybe-info-target-rda
 info-target: maybe-info-target-libada
+info-target: maybe-info-target-libgjs
 info-target: maybe-info-target-libgomp
 
 .PHONY: do-dvi
@@ -1399,6 +1402,7 @@ dvi-target: maybe-dvi-target-boehm-gc
 dvi-target: maybe-dvi-target-qthreads
 dvi-target: maybe-dvi-target-rda
 dvi-target: maybe-dvi-target-libada
+dvi-target: maybe-dvi-target-libgjs
 dvi-target: maybe-dvi-target-libgomp
 
 .PHONY: do-pdf
@@ -1515,6 +1519,7 @@ pdf-target: maybe-pdf-target-boehm-gc
 pdf-target: maybe-pdf-target-qthreads
 pdf-target: maybe-pdf-target-rda
 pdf-target: maybe-pdf-target-libada
+pdf-target: maybe-pdf-target-libgjs
 pdf-target: maybe-pdf-target-libgomp
 
 .PHONY: do-html
@@ -1631,6 +1636,7 @@ html-target: maybe-html-target-boehm-gc
 html-target: maybe-html-target-qthreads
 html-target: maybe-html-target-rda
 html-target: maybe-html-target-libada
+html-target: maybe-html-target-libgjs
 html-target: maybe-html-target-libgomp
 
 .PHONY: do-TAGS
@@ -1747,6 +1753,7 @@ TAGS-target: maybe-TAGS-target-boehm-gc
 TAGS-target: maybe-TAGS-target-qthreads
 TAGS-target: maybe-TAGS-target-rda
 TAGS-target: maybe-TAGS-target-libada
+TAGS-target: maybe-TAGS-target-libgjs
 TAGS-target: maybe-TAGS-target-libgomp
 
 .PHONY: do-install-info
@@ -1863,6 +1870,7 @@ install-info-target: maybe-install-info-target-boehm-gc
 install-info-target: maybe-install-info-target-qthreads
 install-info-target: maybe-install-info-target-rda
 install-info-target: maybe-install-info-target-libada
+install-info-target: maybe-install-info-target-libgjs
 install-info-target: maybe-install-info-target-libgomp
 
 .PHONY: do-install-pdf
@@ -1979,6 +1987,7 @@ install-pdf-target: maybe-install-pdf-target-boehm-gc
 install-pdf-target: maybe-install-pdf-target-qthreads
 install-pdf-target: maybe-install-pdf-target-rda
 install-pdf-target: maybe-install-pdf-target-libada
+install-pdf-target: maybe-install-pdf-target-libgjs
 install-pdf-target: maybe-install-pdf-target-libgomp
 
 .PHONY: do-install-html
@@ -2095,6 +2104,7 @@ install-html-target: maybe-install-html-target-boehm-gc
 install-html-target: maybe-install-html-target-qthreads
 install-html-target: maybe-install-html-target-rda
 install-html-target: maybe-install-html-target-libada
+install-html-target: maybe-install-html-target-libgjs
 install-html-target: maybe-install-html-target-libgomp
 
 .PHONY: do-installcheck
@@ -2211,6 +2221,7 @@ installcheck-target: maybe-installcheck-target-boehm-gc
 installcheck-target: maybe-installcheck-target-qthreads
 installcheck-target: maybe-installcheck-target-rda
 installcheck-target: maybe-installcheck-target-libada
+installcheck-target: maybe-installcheck-target-libgjs
 installcheck-target: maybe-installcheck-target-libgomp
 
 .PHONY: do-mostlyclean
@@ -2327,6 +2338,7 @@ mostlyclean-target: maybe-mostlyclean-target-boehm-gc
 mostlyclean-target: maybe-mostlyclean-target-qthreads
 mostlyclean-target: maybe-mostlyclean-target-rda
 mostlyclean-target: maybe-mostlyclean-target-libada
+mostlyclean-target: maybe-mostlyclean-target-libgjs
 mostlyclean-target: maybe-mostlyclean-target-libgomp
 
 .PHONY: do-clean
@@ -2443,6 +2455,7 @@ clean-target: maybe-clean-target-boehm-gc
 clean-target: maybe-clean-target-qthreads
 clean-target: maybe-clean-target-rda
 clean-target: maybe-clean-target-libada
+clean-target: maybe-clean-target-libgjs
 clean-target: maybe-clean-target-libgomp
 
 .PHONY: do-distclean
@@ -2559,6 +2572,7 @@ distclean-target: maybe-distclean-target-boehm-gc
 distclean-target: maybe-distclean-target-qthreads
 distclean-target: maybe-distclean-target-rda
 distclean-target: maybe-distclean-target-libada
+distclean-target: maybe-distclean-target-libgjs
 distclean-target: maybe-distclean-target-libgomp
 
 .PHONY: do-maintainer-clean
@@ -2675,6 +2689,7 @@ maintainer-clean-target: maybe-maintainer-clean-target-boehm-gc
 maintainer-clean-target: maybe-maintainer-clean-target-qthreads
 maintainer-clean-target: maybe-maintainer-clean-target-rda
 maintainer-clean-target: maybe-maintainer-clean-target-libada
+maintainer-clean-target: maybe-maintainer-clean-target-libgjs
 maintainer-clean-target: maybe-maintainer-clean-target-libgomp
 
 
@@ -2846,6 +2861,7 @@ check-target:  \
     maybe-check-target-qthreads \
     maybe-check-target-rda \
     maybe-check-target-libada \
+    maybe-check-target-libgjs \
     maybe-check-target-libgomp
 
 do-check:
@@ -3069,6 +3085,7 @@ install-target:  \
     maybe-install-target-qthreads \
     maybe-install-target-rda \
     maybe-install-target-libada \
+    maybe-install-target-libgjs \
     maybe-install-target-libgomp
 
 uninstall:
@@ -3204,6 +3221,7 @@ install-strip-target:  \
     maybe-install-strip-target-qthreads \
     maybe-install-strip-target-rda \
     maybe-install-strip-target-libada \
+    maybe-install-strip-target-libgjs \
     maybe-install-strip-target-libgomp
 
 
@@ -57134,6 +57152,463 @@ maintainer-clean-target-libada:
 
 
 
+.PHONY: configure-target-libgjs maybe-configure-target-libgjs
+maybe-configure-target-libgjs:
+@if gcc-bootstrap
+configure-target-libgjs: stage_current
+@endif gcc-bootstrap
+@if target-libgjs
+maybe-configure-target-libgjs: configure-target-libgjs
+configure-target-libgjs: 
+	@: $(MAKE); $(unstage)
+	@r=`${PWD_COMMAND}`; export r; \
+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+	echo "Checking multilib configuration for libgjs..."; \
+	$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libgjs ; \
+	$(CC_FOR_TARGET) --print-multi-lib > $(TARGET_SUBDIR)/libgjs/multilib.tmp 2> /dev/null ; \
+	if test -r $(TARGET_SUBDIR)/libgjs/multilib.out; then \
+	  if cmp -s $(TARGET_SUBDIR)/libgjs/multilib.tmp $(TARGET_SUBDIR)/libgjs/multilib.out; then \
+	    rm -f $(TARGET_SUBDIR)/libgjs/multilib.tmp; \
+	  else \
+	    rm -f $(TARGET_SUBDIR)/libgjs/Makefile; \
+	    mv $(TARGET_SUBDIR)/libgjs/multilib.tmp $(TARGET_SUBDIR)/libgjs/multilib.out; \
+	  fi; \
+	else \
+	  mv $(TARGET_SUBDIR)/libgjs/multilib.tmp $(TARGET_SUBDIR)/libgjs/multilib.out; \
+	fi; \
+	test ! -f $(TARGET_SUBDIR)/libgjs/Makefile || exit 0; \
+	$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libgjs ; \
+	$(NORMAL_TARGET_EXPORTS)  \
+	echo Configuring in $(TARGET_SUBDIR)/libgjs; \
+	cd "$(TARGET_SUBDIR)/libgjs" || exit 1; \
+	case $(srcdir) in \
+	  /* | [A-Za-z]:[\\/]*) topdir=$(srcdir) ;; \
+	  *) topdir=`echo $(TARGET_SUBDIR)/libgjs/ | \
+		sed -e 's,\./,,g' -e 's,[^/]*/,../,g' `$(srcdir) ;; \
+	esac; \
+	srcdiroption="--srcdir=$${topdir}/libgjs"; \
+	libsrcdir="$$s/libgjs"; \
+	rm -f no-such-file || : ; \
+	CONFIG_SITE=no-such-file $(SHELL) $${libsrcdir}/configure \
+	  $(TARGET_CONFIGARGS) --build=${build_alias} --host=${target_alias} \
+	  --target=${target_alias} $${srcdiroption}  \
+	  || exit 1
+@endif target-libgjs
+
+
+
+
+
+.PHONY: all-target-libgjs maybe-all-target-libgjs
+maybe-all-target-libgjs:
+@if gcc-bootstrap
+all-target-libgjs: stage_current
+@endif gcc-bootstrap
+@if target-libgjs
+TARGET-target-libgjs=all
+maybe-all-target-libgjs: all-target-libgjs
+all-target-libgjs: configure-target-libgjs
+	@: $(MAKE); $(unstage)
+	@r=`${PWD_COMMAND}`; export r; \
+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+	$(NORMAL_TARGET_EXPORTS)  \
+	(cd $(TARGET_SUBDIR)/libgjs && \
+	  $(MAKE) $(BASE_FLAGS_TO_PASS) $(EXTRA_TARGET_FLAGS)  \
+		$(TARGET-target-libgjs))
+@endif target-libgjs
+
+
+
+
+
+.PHONY: check-target-libgjs maybe-check-target-libgjs
+maybe-check-target-libgjs:
+@if target-libgjs
+maybe-check-target-libgjs: check-target-libgjs
+
+check-target-libgjs:
+	@: $(MAKE); $(unstage)
+	@r=`${PWD_COMMAND}`; export r; \
+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+	$(NORMAL_TARGET_EXPORTS) \
+	(cd $(TARGET_SUBDIR)/libgjs && \
+	  $(MAKE) $(TARGET_FLAGS_TO_PASS)   check)
+
+@endif target-libgjs
+
+.PHONY: install-target-libgjs maybe-install-target-libgjs
+maybe-install-target-libgjs:
+@if target-libgjs
+maybe-install-target-libgjs: install-target-libgjs
+
+install-target-libgjs: installdirs
+	@: $(MAKE); $(unstage)
+	@r=`${PWD_COMMAND}`; export r; \
+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+	$(NORMAL_TARGET_EXPORTS) \
+	(cd $(TARGET_SUBDIR)/libgjs && \
+	  $(MAKE) $(TARGET_FLAGS_TO_PASS)  install)
+
+@endif target-libgjs
+
+.PHONY: install-strip-target-libgjs maybe-install-strip-target-libgjs
+maybe-install-strip-target-libgjs:
+@if target-libgjs
+maybe-install-strip-target-libgjs: install-strip-target-libgjs
+
+install-strip-target-libgjs: installdirs
+	@: $(MAKE); $(unstage)
+	@r=`${PWD_COMMAND}`; export r; \
+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+	$(NORMAL_TARGET_EXPORTS) \
+	(cd $(TARGET_SUBDIR)/libgjs && \
+	  $(MAKE) $(TARGET_FLAGS_TO_PASS)  install-strip)
+
+@endif target-libgjs
+
+# Other targets (info, dvi, pdf, etc.)
+
+.PHONY: maybe-info-target-libgjs info-target-libgjs
+maybe-info-target-libgjs:
+@if target-libgjs
+maybe-info-target-libgjs: info-target-libgjs
+
+info-target-libgjs: \
+    configure-target-libgjs 
+	@: $(MAKE); $(unstage)
+	@[ -f $(TARGET_SUBDIR)/libgjs/Makefile ] || exit 0 ; \
+	r=`${PWD_COMMAND}`; export r; \
+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+	$(NORMAL_TARGET_EXPORTS) \
+	echo "Doing info in $(TARGET_SUBDIR)/libgjs" ; \
+	for flag in $(EXTRA_TARGET_FLAGS); do \
+	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
+	done; \
+	(cd $(TARGET_SUBDIR)/libgjs && \
+	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
+	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
+	          "RANLIB=$${RANLIB}" \
+	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
+	           info) \
+	  || exit 1
+
+@endif target-libgjs
+
+.PHONY: maybe-dvi-target-libgjs dvi-target-libgjs
+maybe-dvi-target-libgjs:
+@if target-libgjs
+maybe-dvi-target-libgjs: dvi-target-libgjs
+
+dvi-target-libgjs: \
+    configure-target-libgjs 
+	@: $(MAKE); $(unstage)
+	@[ -f $(TARGET_SUBDIR)/libgjs/Makefile ] || exit 0 ; \
+	r=`${PWD_COMMAND}`; export r; \
+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+	$(NORMAL_TARGET_EXPORTS) \
+	echo "Doing dvi in $(TARGET_SUBDIR)/libgjs" ; \
+	for flag in $(EXTRA_TARGET_FLAGS); do \
+	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
+	done; \
+	(cd $(TARGET_SUBDIR)/libgjs && \
+	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
+	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
+	          "RANLIB=$${RANLIB}" \
+	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
+	           dvi) \
+	  || exit 1
+
+@endif target-libgjs
+
+.PHONY: maybe-pdf-target-libgjs pdf-target-libgjs
+maybe-pdf-target-libgjs:
+@if target-libgjs
+maybe-pdf-target-libgjs: pdf-target-libgjs
+
+pdf-target-libgjs: \
+    configure-target-libgjs 
+	@: $(MAKE); $(unstage)
+	@[ -f $(TARGET_SUBDIR)/libgjs/Makefile ] || exit 0 ; \
+	r=`${PWD_COMMAND}`; export r; \
+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+	$(NORMAL_TARGET_EXPORTS) \
+	echo "Doing pdf in $(TARGET_SUBDIR)/libgjs" ; \
+	for flag in $(EXTRA_TARGET_FLAGS); do \
+	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
+	done; \
+	(cd $(TARGET_SUBDIR)/libgjs && \
+	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
+	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
+	          "RANLIB=$${RANLIB}" \
+	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
+	           pdf) \
+	  || exit 1
+
+@endif target-libgjs
+
+.PHONY: maybe-html-target-libgjs html-target-libgjs
+maybe-html-target-libgjs:
+@if target-libgjs
+maybe-html-target-libgjs: html-target-libgjs
+
+html-target-libgjs: \
+    configure-target-libgjs 
+	@: $(MAKE); $(unstage)
+	@[ -f $(TARGET_SUBDIR)/libgjs/Makefile ] || exit 0 ; \
+	r=`${PWD_COMMAND}`; export r; \
+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+	$(NORMAL_TARGET_EXPORTS) \
+	echo "Doing html in $(TARGET_SUBDIR)/libgjs" ; \
+	for flag in $(EXTRA_TARGET_FLAGS); do \
+	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
+	done; \
+	(cd $(TARGET_SUBDIR)/libgjs && \
+	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
+	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
+	          "RANLIB=$${RANLIB}" \
+	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
+	           html) \
+	  || exit 1
+
+@endif target-libgjs
+
+.PHONY: maybe-TAGS-target-libgjs TAGS-target-libgjs
+maybe-TAGS-target-libgjs:
+@if target-libgjs
+maybe-TAGS-target-libgjs: TAGS-target-libgjs
+
+TAGS-target-libgjs: \
+    configure-target-libgjs 
+	@: $(MAKE); $(unstage)
+	@[ -f $(TARGET_SUBDIR)/libgjs/Makefile ] || exit 0 ; \
+	r=`${PWD_COMMAND}`; export r; \
+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+	$(NORMAL_TARGET_EXPORTS) \
+	echo "Doing TAGS in $(TARGET_SUBDIR)/libgjs" ; \
+	for flag in $(EXTRA_TARGET_FLAGS); do \
+	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
+	done; \
+	(cd $(TARGET_SUBDIR)/libgjs && \
+	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
+	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
+	          "RANLIB=$${RANLIB}" \
+	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
+	           TAGS) \
+	  || exit 1
+
+@endif target-libgjs
+
+.PHONY: maybe-install-info-target-libgjs install-info-target-libgjs
+maybe-install-info-target-libgjs:
+@if target-libgjs
+maybe-install-info-target-libgjs: install-info-target-libgjs
+
+install-info-target-libgjs: \
+    configure-target-libgjs \
+    info-target-libgjs 
+	@: $(MAKE); $(unstage)
+	@[ -f $(TARGET_SUBDIR)/libgjs/Makefile ] || exit 0 ; \
+	r=`${PWD_COMMAND}`; export r; \
+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+	$(NORMAL_TARGET_EXPORTS) \
+	echo "Doing install-info in $(TARGET_SUBDIR)/libgjs" ; \
+	for flag in $(EXTRA_TARGET_FLAGS); do \
+	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
+	done; \
+	(cd $(TARGET_SUBDIR)/libgjs && \
+	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
+	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
+	          "RANLIB=$${RANLIB}" \
+	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
+	           install-info) \
+	  || exit 1
+
+@endif target-libgjs
+
+.PHONY: maybe-install-pdf-target-libgjs install-pdf-target-libgjs
+maybe-install-pdf-target-libgjs:
+@if target-libgjs
+maybe-install-pdf-target-libgjs: install-pdf-target-libgjs
+
+install-pdf-target-libgjs: \
+    configure-target-libgjs \
+    pdf-target-libgjs 
+	@: $(MAKE); $(unstage)
+	@[ -f $(TARGET_SUBDIR)/libgjs/Makefile ] || exit 0 ; \
+	r=`${PWD_COMMAND}`; export r; \
+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+	$(NORMAL_TARGET_EXPORTS) \
+	echo "Doing install-pdf in $(TARGET_SUBDIR)/libgjs" ; \
+	for flag in $(EXTRA_TARGET_FLAGS); do \
+	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
+	done; \
+	(cd $(TARGET_SUBDIR)/libgjs && \
+	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
+	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
+	          "RANLIB=$${RANLIB}" \
+	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
+	           install-pdf) \
+	  || exit 1
+
+@endif target-libgjs
+
+.PHONY: maybe-install-html-target-libgjs install-html-target-libgjs
+maybe-install-html-target-libgjs:
+@if target-libgjs
+maybe-install-html-target-libgjs: install-html-target-libgjs
+
+install-html-target-libgjs: \
+    configure-target-libgjs \
+    html-target-libgjs 
+	@: $(MAKE); $(unstage)
+	@[ -f $(TARGET_SUBDIR)/libgjs/Makefile ] || exit 0 ; \
+	r=`${PWD_COMMAND}`; export r; \
+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+	$(NORMAL_TARGET_EXPORTS) \
+	echo "Doing install-html in $(TARGET_SUBDIR)/libgjs" ; \
+	for flag in $(EXTRA_TARGET_FLAGS); do \
+	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
+	done; \
+	(cd $(TARGET_SUBDIR)/libgjs && \
+	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
+	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
+	          "RANLIB=$${RANLIB}" \
+	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
+	           install-html) \
+	  || exit 1
+
+@endif target-libgjs
+
+.PHONY: maybe-installcheck-target-libgjs installcheck-target-libgjs
+maybe-installcheck-target-libgjs:
+@if target-libgjs
+maybe-installcheck-target-libgjs: installcheck-target-libgjs
+
+installcheck-target-libgjs: \
+    configure-target-libgjs 
+	@: $(MAKE); $(unstage)
+	@[ -f $(TARGET_SUBDIR)/libgjs/Makefile ] || exit 0 ; \
+	r=`${PWD_COMMAND}`; export r; \
+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+	$(NORMAL_TARGET_EXPORTS) \
+	echo "Doing installcheck in $(TARGET_SUBDIR)/libgjs" ; \
+	for flag in $(EXTRA_TARGET_FLAGS); do \
+	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
+	done; \
+	(cd $(TARGET_SUBDIR)/libgjs && \
+	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
+	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
+	          "RANLIB=$${RANLIB}" \
+	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
+	           installcheck) \
+	  || exit 1
+
+@endif target-libgjs
+
+.PHONY: maybe-mostlyclean-target-libgjs mostlyclean-target-libgjs
+maybe-mostlyclean-target-libgjs:
+@if target-libgjs
+maybe-mostlyclean-target-libgjs: mostlyclean-target-libgjs
+
+mostlyclean-target-libgjs: 
+	@: $(MAKE); $(unstage)
+	@[ -f $(TARGET_SUBDIR)/libgjs/Makefile ] || exit 0 ; \
+	r=`${PWD_COMMAND}`; export r; \
+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+	$(NORMAL_TARGET_EXPORTS) \
+	echo "Doing mostlyclean in $(TARGET_SUBDIR)/libgjs" ; \
+	for flag in $(EXTRA_TARGET_FLAGS); do \
+	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
+	done; \
+	(cd $(TARGET_SUBDIR)/libgjs && \
+	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
+	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
+	          "RANLIB=$${RANLIB}" \
+	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
+	           mostlyclean) \
+	  || exit 1
+
+@endif target-libgjs
+
+.PHONY: maybe-clean-target-libgjs clean-target-libgjs
+maybe-clean-target-libgjs:
+@if target-libgjs
+maybe-clean-target-libgjs: clean-target-libgjs
+
+clean-target-libgjs: 
+	@: $(MAKE); $(unstage)
+	@[ -f $(TARGET_SUBDIR)/libgjs/Makefile ] || exit 0 ; \
+	r=`${PWD_COMMAND}`; export r; \
+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+	$(NORMAL_TARGET_EXPORTS) \
+	echo "Doing clean in $(TARGET_SUBDIR)/libgjs" ; \
+	for flag in $(EXTRA_TARGET_FLAGS); do \
+	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
+	done; \
+	(cd $(TARGET_SUBDIR)/libgjs && \
+	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
+	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
+	          "RANLIB=$${RANLIB}" \
+	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
+	           clean) \
+	  || exit 1
+
+@endif target-libgjs
+
+.PHONY: maybe-distclean-target-libgjs distclean-target-libgjs
+maybe-distclean-target-libgjs:
+@if target-libgjs
+maybe-distclean-target-libgjs: distclean-target-libgjs
+
+distclean-target-libgjs: 
+	@: $(MAKE); $(unstage)
+	@[ -f $(TARGET_SUBDIR)/libgjs/Makefile ] || exit 0 ; \
+	r=`${PWD_COMMAND}`; export r; \
+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+	$(NORMAL_TARGET_EXPORTS) \
+	echo "Doing distclean in $(TARGET_SUBDIR)/libgjs" ; \
+	for flag in $(EXTRA_TARGET_FLAGS); do \
+	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
+	done; \
+	(cd $(TARGET_SUBDIR)/libgjs && \
+	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
+	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
+	          "RANLIB=$${RANLIB}" \
+	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
+	           distclean) \
+	  || exit 1
+
+@endif target-libgjs
+
+.PHONY: maybe-maintainer-clean-target-libgjs maintainer-clean-target-libgjs
+maybe-maintainer-clean-target-libgjs:
+@if target-libgjs
+maybe-maintainer-clean-target-libgjs: maintainer-clean-target-libgjs
+
+maintainer-clean-target-libgjs: 
+	@: $(MAKE); $(unstage)
+	@[ -f $(TARGET_SUBDIR)/libgjs/Makefile ] || exit 0 ; \
+	r=`${PWD_COMMAND}`; export r; \
+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+	$(NORMAL_TARGET_EXPORTS) \
+	echo "Doing maintainer-clean in $(TARGET_SUBDIR)/libgjs" ; \
+	for flag in $(EXTRA_TARGET_FLAGS); do \
+	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
+	done; \
+	(cd $(TARGET_SUBDIR)/libgjs && \
+	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
+	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
+	          "RANLIB=$${RANLIB}" \
+	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
+	           maintainer-clean) \
+	  || exit 1
+
+@endif target-libgjs
+
+
+
+
+
 .PHONY: configure-target-libgomp maybe-configure-target-libgomp
 maybe-configure-target-libgomp:
 @if gcc-bootstrap
@@ -60197,6 +60672,7 @@ configure-target-boehm-gc: stage_last
 configure-target-qthreads: stage_last
 configure-target-rda: stage_last
 configure-target-libada: stage_last
+configure-target-libgjs: stage_last
 configure-stage1-target-libgomp: maybe-all-stage1-gcc
 configure-stage2-target-libgomp: maybe-all-stage2-gcc
 configure-stage3-target-libgomp: maybe-all-stage3-gcc
@@ -60228,6 +60704,7 @@ configure-target-boehm-gc: maybe-all-gcc
 configure-target-qthreads: maybe-all-gcc
 configure-target-rda: maybe-all-gcc
 configure-target-libada: maybe-all-gcc
+configure-target-libgjs: maybe-all-gcc
 configure-target-libgomp: maybe-all-gcc
 @endif gcc-no-bootstrap
 
@@ -61012,6 +61489,8 @@ configure-stage3-target-libstdc++-v3: maybe-configure-stage3-target-libgomp
 configure-stage4-target-libstdc++-v3: maybe-configure-stage4-target-libgomp
 configure-stageprofile-target-libstdc++-v3: maybe-configure-stageprofile-target-libgomp
 configure-stagefeedback-target-libstdc++-v3: maybe-configure-stagefeedback-target-libgomp
+configure-target-libgjs: maybe-configure-target-libffi
+all-target-libgjs: maybe-all-target-libffi
 all-target-libstdc++-v3: maybe-configure-target-libgomp
 
 all-stage1-target-libstdc++-v3: maybe-configure-stage1-target-libgomp
@@ -61072,6 +61551,7 @@ configure-target-boehm-gc: maybe-all-target-libgcc
 configure-target-qthreads: maybe-all-target-libgcc
 configure-target-rda: maybe-all-target-libgcc
 configure-target-libada: maybe-all-target-libgcc
+configure-target-libgjs: maybe-all-target-libgcc
 configure-target-libgomp: maybe-all-target-libgcc
 @endif gcc-no-bootstrap
 
@@ -61117,6 +61597,8 @@ configure-target-qthreads: maybe-all-target-newlib maybe-all-target-libgloss
 configure-target-rda: maybe-all-target-newlib maybe-all-target-libgloss
 
 configure-target-libada: maybe-all-target-newlib maybe-all-target-libgloss
+
+configure-target-libgjs: maybe-all-target-newlib maybe-all-target-libgloss
 
 configure-target-libgomp: maybe-all-target-newlib maybe-all-target-libgloss
 

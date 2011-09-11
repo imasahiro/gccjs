@@ -201,6 +201,7 @@ target_libraries="target-libgcc \
 		${libgcj} \
 		target-libobjc \
 		target-libada \
+		target-libgjs \
 		target-libgo"
 
 # these tools are built using the target libraries, and are intended to
