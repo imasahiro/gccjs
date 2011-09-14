@@ -3,17 +3,20 @@
 
 typedef enum {
     OP_NULL,
+    OP_BOOL,
     OP_INTEGER,
     OP_FLOAT,
     OP_STRING,
     OP_LET,
     OP_DEFUN,
     OP_NEW,
-    OP_FIELD,
+    OP_IDENTIFIER,
     OP_PARM,
+    OP_FIELD,
     OP_GetField,
     OP_SetField,
     OP_CALL,
+    OP_RETURN,
     OP_EQLET,   /*    = */
     OP_MULLET,  /*   *= */
     OP_DIVLET,  /*   /= */
@@ -38,6 +41,8 @@ typedef enum {
     OP_Xor,
     OP_And,
     OP_Not,
+    OP_LAND, /* && */
+    OP_LOR,  /* || */
     OP_LT,
     OP_LE,
     OP_GT,
@@ -70,6 +75,7 @@ typedef enum {
 typedef struct GTY(()) gjs_tree_common {
     location_t loc;
     JSType T;
+    JSOperator op;
     union {
         int   ivalue;
         char *fvalue;
@@ -92,17 +98,35 @@ typedef struct GTY(()) gjs_tree_t {
     struct gjs_tree_t *next;
 } gjs_tree_t;
 
+#define JSTREE_COMMON_ALLOC()   ((gjs_tree_common*)(jstree_alloc_()))
+#define JSTREE_COMMON_INT(x)    (((gjs_tree_common*)x)->o.ivalue)
+#define JSTREE_COMMON_FLOAT(x)  (((gjs_tree_common*)x)->o.fvalue)
+#define JSTREE_COMMON_STRING(x) (((gjs_tree_common*)x)->o.svalue)
+
 #define JSTREE_TYPE(x)  ((x)->T)
+#define JSTREE_OP(x)    ((x)->op)
 #define JSTREE_CHAIN(x) ((x)->next)
 #define JSTREE_LHS(x)   ((x)->l.t)
 #define JSTREE_RHS(x)   ((x)->r.t)
 #define JSTREE_LHS_C(x) ((x)->l.tc)
 #define JSTREE_RHS_C(x) ((x)->r.tc)
-#define JSTREE_ALLOC(x) ((gjs_tree_t*)(xmalloc(sizeof(gjs_tree_t))))
-#define JSTREE_IDENTIFIER_POINTER(x) (JSTREE_LHS_C(x)->o.svalue)
+#define JSTREE_ALLOC()  ((gjs_tree_t*)(jstree_alloc_()))
+#define JSTREE_IDENTIFIER_POINTER(x) (JSTREE_COMMON_STRING(JSTREE_LHS_C(x)))
 
 typedef struct gjs_tree_t * jstree;
 DEF_VEC_P (jstree);
 DEF_VEC_ALLOC_P (jstree, gc);
+
+extern jstree js_build_nulval(int n/*n=0=>null, n=1=>undefined*/);
+static inline jstree jstree_alloc_(void)
+{
+  jstree t = (gjs_tree_t*) (xmalloc(sizeof(gjs_tree_t)));
+  memset(t, 0, sizeof(gjs_tree_t));
+  return t;
+}
+extern jstree global_tree;
+
+#define JS_NULL      (js_build_nulval(0))
+#define JS_UNDEFINED (js_build_nulval(1))
 
 #endif /* end of include guard: JS_TREE_H */

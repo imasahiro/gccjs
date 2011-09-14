@@ -25,13 +25,29 @@
 #include "vec.h"
 #include "hashtab.h"
 
+#include "gjs.h"
 #include "js-lang.h"
 #include "js-op.h"
 #include "js-tree.h"
 
+#ifndef DBG0
+#define debug0(...)
+#else
+#define debug0(...) debug(__VA_ARGS__)
+#endif
+
 #define TODO() error("TODO");
 extern int js_lex (void);
 int js_error(const char *str);
+#define JSTREE_APPENDTAIL(top, node) {\
+  jstree t_ = top;\
+  while(JSTREE_CHAIN(t_)) {\
+      t_ = JSTREE_CHAIN(t_);\
+  }\
+  JSTREE_CHAIN(t_) = (node);\
+}
+
+location_t CURRENT_LOCATION(void);
 %}
 
 %union
@@ -83,7 +99,7 @@ int js_error(const char *str);
 %token SHIFT_LET                /* >>>= */
 %token AND_LET OR_LET XOR_LET   /* &= |= ^=*/
 %token DOT QUESTION             /* . ? */
-%token AND AND2 OR OR2 XOR      /* & && | || ^ */
+%token AND LAND OR LOR XOR      /* & && | || ^ */
 %token ADD SUB MUL DIV REM      /* + - * / % */
 %token INV NOT LT LTE GT GTE    /* ~ ! < <= > >= */
 %token LSHIFT RSHIFT SHIFT      /* << >> >>> */
@@ -120,12 +136,14 @@ int js_error(const char *str);
 %type <token> BitwiseANDExpression BitwiseANDExpressionNoIn
 %type <token> BitwiseORExpression BitwiseORExpressionNoIn
 %type <token> BitwiseXORExpression BitwiseXORExpressionNoIn
+%type <token> LogicalANDExpression LogicalANDExpressionNoIn
+%type <token> LogicalORExpression LogicalORExpressionNoIn
 
 %type <token> IdentifierName
 
-%type <vec> ArgumentList Arguments
-%type <vec> FormalParameterListopt FormalParameterList
-%type <vec> ElementList
+%type <token> ArgumentList Arguments
+%type <token> FormalParameterListopt FormalParameterList
+%type <token> ElementList
 %type <op> AssignmentOperator
 
 %%
@@ -191,87 +209,88 @@ Statement
 
 Block 
     : LBRACE RBRACE {
-        //$$ = poplevel(js__block_level+1, NULL_TREE);
+        $$ = NULL;
     }
     | LBRACE StatementList RBRACE {
-        //$$ = poplevel(js__block_level+1, $2);
+        $$ = $2;
+        /*$$ = poplevel(js__block_level+1, $2);*/
     }
     ;
 
 StatementList 
     : Statement {
-        //$$ = APPEND_STMTLIST($1, (alloc_stmt_list()));
+        JSTREE_APPENDTAIL($1, NULL);
     }
     | StatementList Statement {
-        //$$ = APPEND_STMTLIST($2, ($1));
+        JSTREE_APPENDTAIL($1, $2);
     }
     ;
 
 VariableStatement 
     : Var VariableDeclarationList SEMICOLON {
-        //$$ = $2;
+        $$ = $2;
     }
     ;
 
 VariableDeclarationList 
     : VariableDeclaration {
-        //$$ = APPEND_STMTLIST($1, (alloc_stmt_list()));
+        JSTREE_APPENDTAIL($1, NULL);
     }
     | VariableDeclarationList CAMMA VariableDeclaration {
-        //$$ = APPEND_STMTLIST($3, ($1));
+        JSTREE_APPENDTAIL($1, $3);
     }
     ;
 
 VariableDeclaration 
     : Identifier {
-        //$$ = js_build_let_expr(OpEQLET, $1, js_get_default_value(TREE_TYPE($1)));
+        $$ = js_build2(OP_EQLET, TyValue, $1, JS_UNDEFINED);
     }
     | Identifier Initialiser {
-        //$$ = js_build_let_expr(OpEQLET, $1, $2);
+        $$ = js_build2(OP_EQLET, TyValue, $1, $2);
     }
     ;
 
 VariableDeclarationListNoIn 
     : VariableDeclarationNoIn {
-        //$$ = APPEND_STMTLIST($1, (alloc_stmt_list()));
+        JSTREE_APPENDTAIL($1, NULL);
     }
     | VariableDeclarationListNoIn CAMMA VariableDeclarationNoIn {
-        //$$ = APPEND_STMTLIST($3, ($1));
+        JSTREE_APPENDTAIL($1, $3);
     }
     ;
 
 VariableDeclarationNoIn
     : Identifier {
-        //$$ = js_build_let_expr(OpEQLET, $1, js_get_default_value(TREE_TYPE($1)));
+        $$ = js_build2(OP_EQLET, TyValue, $1, JS_UNDEFINED);
     }
     | Identifier InitialiserNoIn {
-        //$$ = js_build_let_expr(OpEQLET, $1, $2);
+        $$ = js_build2(OP_EQLET, TyValue, $1, $2);
     }
     ;
 
 Initialiser 
     : EQ_LET AssignmentExpression {
-        //$$ = $2;
+        $$ = $2;
     }
     ;
 
 InitialiserNoIn 
     : EQ_LET AssignmentExpressionNoIn {
-        //$$ = $2;
+        $$ = $2;
     }
     ;
 
 AssignmentExpression 
     : ConditionalExpression {}
     | LeftHandSideExpression AssignmentOperator AssignmentExpression {
-        //$$ = js_build_let_expr($2, $1, $3);
+        $$ = js_build2($2, TyValue, $1, $3);
     }
     ;
 
 AssignmentExpressionNoIn
     : ConditionalExpressionNoIn {}
     | LeftHandSideExpression AssignmentOperator AssignmentExpressionNoIn {
-        //$$ = js_build_let_expr($2, $1, $3);
+        $$ = js_build2($2, TyValue, $1, $3);
     }
     ;
 
@@ -448,8 +467,10 @@ DebuggerStatement
 Program 
     : /* not in spec */ {}
     | SourceElements {
-        //write_global_script($1);
-        //$$ = NULL_TREE;
+        if (!global_tree)
+          global_tree = $1;
+        else
+          JSTREE_APPENDTAIL(global_tree, $1);
     }
 ;
 
@@ -474,17 +495,17 @@ FunctionExpression
 
 FormalParameterListopt
     : {
-        //js_append_to_current_args(NULL_TREE, js__block_level);
+        $$ = NULL;
     }
     | FormalParameterList
     ;
 
 FormalParameterList
     : Identifier {
-        //js_append_to_current_args($1, js__block_level);
+        JSTREE_APPENDTAIL($1, NULL);
     }
     | FormalParameterList CAMMA Identifier {
-        //js_append_to_current_args($3, js__block_level);
+        JSTREE_APPENDTAIL($1, $3);
     }
 
 FunctionBody 
@@ -499,10 +520,10 @@ FunctionBody
 
 SourceElements
     : SourceElement {
-        //$$ = APPEND_STMTLIST($1, (alloc_stmt_list()));
+        JSTREE_APPENDTAIL($1, NULL);
     }
     | SourceElements SourceElement {
-        //$$ = APPEND_STMTLIST($2, ($1));
+        JSTREE_APPENDTAIL($1, $2);
     }
 ;
 
@@ -644,11 +665,11 @@ NewExpression
 CallExpression 
     : MemberExpression Arguments {
         debug("CallExpression1");
-        //$$ = js_build_call_expr($1, $2, true);
+        $$ = js_build_call(TyValue, $1, $2);
     }
     | CallExpression Arguments {
-        /*debug("CallExpression2");*/
-        //$$ = js_build_call_expr($1, $2, true);
+        debug("CallExpression2");
+        $$ = js_build_call(TyValue, $1, $2);
     }
     | CallExpression LPARENTHESIS Expression RPARENTHESIS {
         /*debug("CallExpression3");*/
@@ -660,27 +681,19 @@ CallExpression
 
 Arguments 
     : LCBRACE RCBRACE {
-        /*debug("Arguments1");*/
-        //$$ = VEC_alloc(tree,gc,0);
+        $$ = NULL;
     }
     | LCBRACE ArgumentList RCBRACE {
-        /*debug("Arguments2");*/
-        //$$ = $2;
+        $$ = $2;
     }
     ;
 
 ArgumentList 
     : AssignmentExpression {
-        //VEC(tree,gc) *args_list = VEC_alloc(tree,gc, 0);
-        //tree elem = $1;
-        //VEC_safe_push (tree, gc, args_list, elem);
-        //$$ = args_list;
+        JSTREE_APPENDTAIL($1, NULL);
     }
     | ArgumentList CAMMA AssignmentExpression {
-        //VEC(tree,gc) *args_list = $1;
-        //tree elem = $3;
-        //VEC_safe_push(tree, gc, args_list,elem);
-        //$$ = args_list;
+        JSTREE_APPENDTAIL($1, $3);
     }
     ;
 
@@ -742,15 +755,15 @@ MultiplicativeExpression
     : UnaryExpression
     | MultiplicativeExpression MUL UnaryExpression {
         debug("MultiplicativeExpression1");
-        //$$ = js_build_op2_expr(OpMul, $1, $3);
+        $$ = js_build2(OP_Mul, TyValue, $1, $3);
     }
     | MultiplicativeExpression DIV UnaryExpression {
         debug0("MultiplicativeExpression2");
-        //$$ = js_build_op2_expr(OpDiv, $1, $3);
+        $$ = js_build2(OP_Div, TyValue, $1, $3);
     }
     | MultiplicativeExpression REM UnaryExpression {
         debug0("MultiplicativeExpression3");
-        //$$ = js_build_op2_expr(OpMod, $1, $3);
+        $$ = js_build2(OP_Mod, TyValue, $1, $3);
     }
     ;
 
@@ -758,11 +771,11 @@ AdditiveExpression
     : MultiplicativeExpression
     | AdditiveExpression ADD MultiplicativeExpression {
         debug0("AdditiveExpression1");
-        //$$ = js_build_op2_expr(OpPlus, $1, $3);
+        $$ = js_build2(OP_Plus, TyValue, $1, $3);
     }
     | AdditiveExpression SUB MultiplicativeExpression {
         debug0("AdditiveExpression2");
-        //$$ = js_build_op2_expr(OpMinus, $1, $3);
+        $$ = js_build2(OP_Minus, TyValue, $1, $3);
     }
     ;
 
@@ -770,10 +783,10 @@ ShiftExpression
     : AdditiveExpression
     | ShiftExpression LSHIFT AdditiveExpression {
         debug("ShiftExpression");
-        //$$ = js_build_op2_expr(OpLshift, $1, $3);
+        $$ = js_build2(OP_Lshift, TyValue, $1, $3);
     }
     | ShiftExpression RSHIFT AdditiveExpression {
-        //$$ = js_build_op2_expr(OpRshift, $1, $3);
+        $$ = js_build2(OP_Rshift, TyValue, $1, $3);
     }
     | ShiftExpression SHIFT  AdditiveExpression {
         TODO();
@@ -783,34 +796,38 @@ ShiftExpression
 RelationalExpression 
     : ShiftExpression
     | RelationalExpression LT  ShiftExpression {
-        //$$ = js_build_op2_expr(OpLT, $1, $3);
+        $$ = js_build2(OP_LT, TyBoolean, $1, $3);
     }
     | RelationalExpression GT  ShiftExpression {
-        //$$ = js_build_op2_expr(OpGT, $1, $3);
+        $$ = js_build2(OP_GT, TyBoolean, $1, $3);
     }
     | RelationalExpression LTE ShiftExpression {
-        //$$ = js_build_op2_expr(OpLE, $1, $3);
+        $$ = js_build2(OP_LE, TyBoolean, $1, $3);
     }
     | RelationalExpression GTE ShiftExpression {
-        //$$ = js_build_op2_expr(OpGE, $1, $3);
+        $$ = js_build2(OP_GE, TyBoolean, $1, $3);
     }
-    | RelationalExpression Instanceof ShiftExpression
-    | RelationalExpression In ShiftExpression
+    | RelationalExpression Instanceof ShiftExpression {
+        TODO();
+    }
+    | RelationalExpression In ShiftExpression {
+        TODO();
+    }
     ;
 
 RelationalExpressionNoIn
     : ShiftExpression
     | RelationalExpression LT  ShiftExpression {
-        //$$ = js_build_op2_expr(OpLT, $1, $3);
+        $$ = js_build2(OP_LT, TyBoolean, $1, $3);
     }
     | RelationalExpression GT  ShiftExpression {
-        //$$ = js_build_op2_expr(OpGT, $1, $3);
+        $$ = js_build2(OP_GT, TyBoolean, $1, $3);
     }
     | RelationalExpression LTE ShiftExpression {
-        //$$ = js_build_op2_expr(OpLE, $1, $3);
+        $$ = js_build2(OP_LE, TyBoolean, $1, $3);
     }
     | RelationalExpression GTE ShiftExpression {
-        //$$ = js_build_op2_expr(OpGE, $1, $3);
+        $$ = js_build2(OP_GE, TyBoolean, $1, $3);
     }
     | RelationalExpression Instanceof ShiftExpression {
         TODO();
@@ -820,98 +837,107 @@ RelationalExpressionNoIn
 EqualityExpression 
     : RelationalExpression
     | EqualityExpression EQEQ   RelationalExpression {
-        //$$ = js_build_op2_expr(OpEQ, $1, $3);
+        $$ = js_build2(OP_EQ, TyBoolean, $1, $3);
     }
     | EqualityExpression NEQ    RelationalExpression {
-        //$$ = js_build_op2_expr(OpNE, $1, $3);
+        $$ = js_build2(OP_NE, TyBoolean, $1, $3);
     }
     | EqualityExpression STREQ  RelationalExpression {
-        //$$ = js_build_op2_expr(OpSTREQ, $1, $3);
+        $$ = js_build2(OP_STREQ, TyBoolean, $1, $3);
     }
     | EqualityExpression STRNEQ RelationalExpression {
-        //$$ = js_build_op2_expr(OpSTRNE, $1, $3);
+        $$ = js_build2(OP_STRNE, TyBoolean, $1, $3);
     }
     ;
 
 EqualityExpressionNoIn
     : RelationalExpressionNoIn
     | EqualityExpressionNoIn EQEQ   RelationalExpressionNoIn {
-        //$$ = js_build_op2_expr(OpEQ, $1, $3);
+        $$ = js_build2(OP_EQ, TyBoolean, $1, $3);
     }
     | EqualityExpressionNoIn NEQ    RelationalExpressionNoIn {
-        //$$ = js_build_op2_expr(OpNE, $1, $3);
+        $$ = js_build2(OP_NE, TyBoolean, $1, $3);
     }
     | EqualityExpressionNoIn STREQ  RelationalExpressionNoIn {
-        TODO();
+        $$ = js_build2(OP_STREQ, TyBoolean, $1, $3);
     }
     | EqualityExpressionNoIn STRNEQ RelationalExpressionNoIn {
-        TODO();
+        $$ = js_build2(OP_STRNE, TyBoolean, $1, $3);
     }
     ;
 
 BitwiseANDExpression 
     : EqualityExpression
     | BitwiseANDExpression AND EqualityExpression {
-        //$$ = js_build_op2_expr(OpAnd, $1, $3);
+        $$ = js_build2(OP_And, TyValue, $1, $3);
     }
     ;
 
 BitwiseXORExpression 
     : BitwiseANDExpression
     | BitwiseXORExpression XOR BitwiseANDExpression {
-        //$$ = js_build_op2_expr(OpXor, $1, $3);
+        $$ = js_build2(OP_Xor, TyValue, $1, $3);
     }
     ;
 
 BitwiseORExpression 
     : BitwiseXORExpression
     | BitwiseORExpression OR BitwiseXORExpression {
-        //$$ = js_build_op2_expr(OpOr, $1, $3);
+        $$ = js_build2(OP_Or, TyValue, $1, $3);
     }
     ;
 
 LogicalANDExpression 
     : BitwiseORExpression
-    | LogicalANDExpression AND2 BitwiseORExpression
+    | LogicalANDExpression LAND BitwiseORExpression {
+        $$ = js_build2(OP_LAND, TyValue, $1, $3);
+    }
     ;
 
 LogicalORExpression 
     : LogicalANDExpression
-    | LogicalORExpression OR2 LogicalANDExpression
+    | LogicalORExpression LOR LogicalANDExpression {
+        $$ = js_build2(OP_LOR, TyValue, $1, $3);
+    }
     ;
 
 BitwiseANDExpressionNoIn
     : EqualityExpressionNoIn
     | BitwiseANDExpressionNoIn AND EqualityExpressionNoIn {
-        //$$ = js_build_op2_expr(OpAnd, $1, $3);
+        $$ = js_build2(OP_And, TyValue, $1, $3);
     }
     ;
 
 BitwiseXORExpressionNoIn
     : BitwiseANDExpressionNoIn
     | BitwiseXORExpressionNoIn XOR BitwiseANDExpressionNoIn {
-        //$$ = js_build_op2_expr(OpXor, $1, $3);
+        $$ = js_build2(OP_Xor, TyValue, $1, $3);
     }
     ;
 
 BitwiseORExpressionNoIn
     : BitwiseXORExpressionNoIn
     | BitwiseORExpressionNoIn OR BitwiseXORExpressionNoIn {
-        //$$ = js_build_op2_expr(OpOr, $1, $3);
+        $$ = js_build2(OP_Or, TyValue, $1, $3);
     }
     ;
 
 LogicalANDExpressionNoIn
     : BitwiseORExpressionNoIn
-    | LogicalANDExpressionNoIn AND2 BitwiseORExpressionNoIn
+    | LogicalANDExpressionNoIn LAND BitwiseORExpressionNoIn {
+        $$ = js_build2(OP_LAND, TyValue, $1, $3);
+    }
     ;
 
 LogicalORExpressionNoIn
     : LogicalANDExpressionNoIn
-    | LogicalORExpressionNoIn OR2 LogicalANDExpressionNoIn
+    | LogicalORExpressionNoIn LOR LogicalANDExpressionNoIn {
+        $$ = js_build2(OP_LOR, TyValue, $1, $3);
+    }
     ;
 
 %%
+
 location_t CURRENT_LOCATION(void)
 {
     location_t loc = ((location_t)js_lloc.first_line);

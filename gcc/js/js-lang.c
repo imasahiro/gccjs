@@ -184,11 +184,14 @@ js_langhook_getdecls( void )
   return NULL;
 }
 
+jstree global_tree = NULL;
+
 /* Write out globals.  */
 static void
 js_langhook_write_globals( void )
 {
   debug("write globals!\n");
+  jstree_dump(global_tree);
 }
 
 static int

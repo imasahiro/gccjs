@@ -17,7 +17,9 @@ js-lexer.o: $(GCCJS_HEADERS) $(srcdir)/js/js-lexer.l js-parser.o
 	$(CC) $(ALL_COMPILERFLAGS) $(GJS_CFLAGS) $(INCLUDES) \
 	$(LDFLAGS) -c -o $@ lex.js.c
 
-GCCJS_HEADERS=$(srcdir)/js/js-lang.c
+GCCJS_HEADERS=$(srcdir)/js/js-lang.h \
+              $(srcdir)/js/js-tree.h \
+              $(srcdir)/js/js-op.h \
 
 js-parser.o: $(GCCJS_HEADERS) $(srcdir)/js/js-parser.y
 	$(BISON) -p js_ -v --defines=y.js.h --output=y.js.c \

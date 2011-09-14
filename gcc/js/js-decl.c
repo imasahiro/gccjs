@@ -38,11 +38,119 @@ along with GCC; see the file COPYING3.  If not see
 #include "hashtab.h"
 
 #include "gjs.h"
-#include "js-tree.h"
 #include "js-op.h"
+typedef enum jsfieldop {
+    FIELD_NONE,
+    FIELD_SET,
+    FIELD_GET
+} jsfieldop;
 
-tree js_build_id(const char *str)
+static void DUMP_TREE(jstree t);
+static void DUMP_TREE_FIELD(jsfieldop op, jstree t)
 {
+  switch(op) {
+    case FIELD_NONE:
+      break;
+    case FIELD_SET:
+      fprintf(stderr, "set ");
+      break;
+    case FIELD_GET:
+      fprintf(stderr, "get ");
+      break;
+  }
+  DUMP_TREE(JSTREE_LHS(t));
+  fprintf(stderr, ".");
+  DUMP_TREE(JSTREE_RHS(t));
+  fprintf(stderr, "%p", t);
+}
+
+static void DUMP_TREE_CALL(const char *name, jstree t)
+{
+  fprintf(stderr, "%s ", name);
+  DUMP_TREE(JSTREE_LHS(t));
+  fprintf(stderr, "(");
+  DUMP_TREE(JSTREE_RHS(t));
+  fprintf(stderr, ")");
+}
+
+static void DUMP_TREE(jstree t)
+{
+  switch(JSTREE_OP(t)) {
+    case OP_Undef:
+      fprintf(stderr, "undefined");
+      break;
+    case OP_NULL:
+      fprintf(stderr, "null");
+      break;
+    case OP_BOOL:
+      fprintf(stderr, "bool(%s)", JSTREE_COMMON_INT(t)?"true":"false");
+      break;
+    case OP_INTEGER:
+      fprintf(stderr, "int(%d)", JSTREE_COMMON_INT(t));
+      break;
+    case OP_FLOAT:
+      fprintf(stderr, "float(%s)", JSTREE_COMMON_STRING(t));
+      break;
+    case OP_STRING:
+      fprintf(stderr, "string(%s)", JSTREE_COMMON_STRING(t));
+      break;
+    case OP_LET:
+    case OP_EQLET:
+      fprintf(stderr, "let ");
+      DUMP_TREE(JSTREE_LHS(t));
+      fprintf(stderr, "= ");
+      DUMP_TREE(JSTREE_RHS(t));
+      break;
+    case OP_DEFUN:
+      fprintf(stderr, "defun ");
+      DUMP_TREE(JSTREE_LHS(t));
+      fprintf(stderr, "= ");
+      DUMP_TREE(JSTREE_RHS(t));
+      break;
+    case OP_NEW:
+      DUMP_TREE_CALL("new", t);
+      break;
+    case OP_IDENTIFIER:
+      fprintf(stderr, "id:%s", JSTREE_COMMON_STRING(t));
+      break;
+    case OP_PARM:
+      fprintf(stderr, "param=%p", t);
+      break;
+    case OP_FIELD:
+      DUMP_TREE_FIELD(FIELD_NONE, t);
+      break;
+    case OP_GetField:
+      DUMP_TREE_FIELD(FIELD_GET, t);
+      break;
+    case OP_SetField:
+      DUMP_TREE_FIELD(FIELD_SET, t);
+      break;
+    case OP_CALL:
+      DUMP_TREE_CALL("call", t);
+      break;
+    case OP_RETURN:
+      fprintf(stderr, "return ");
+      DUMP_TREE(JSTREE_LHS(t));
+      break;
+    default:
+      fprintf(stderr, "'OP=%d, %p'", JSTREE_OP(t), t);
+      break;
+  }
+  if (JSTREE_CHAIN(t)) {
+      fprintf(stderr, ";\n");
+      DUMP_TREE(JSTREE_CHAIN(t));
+  }
+}
+
+void jstree_dump(jstree t)
+{
+  DUMP_TREE(t);
+  fprintf(stderr, "\n");
+}
+
+jstree js_build_id(const char *str)
+{
+  gjs_tree_common *id;
   char *name = xstrdup(str);
   int i, len = strlen(name);
   for (i = 0; i < len; i++) {
@@ -50,31 +158,78 @@ tree js_build_id(const char *str)
           name[i] = '_';
       }
   }
-  return get_identifier(name);
+  id = JSTREE_COMMON_ALLOC();
+  JSTREE_TYPE(id) = TyValue;
+  JSTREE_OP(id)   = OP_IDENTIFIER;
+  JSTREE_COMMON_STRING(id) = name;
+  return (jstree)id;
 }
 
-tree js_build_int(int val)
+jstree js_build_int(int val)
 {
-  return build_int_cst(integer_type_node, val);
+  gjs_tree_common *n;
+  n = JSTREE_COMMON_ALLOC();
+  JSTREE_TYPE(n) = TyInt;
+  JSTREE_OP(n) = OP_INTEGER;
+  JSTREE_COMMON_INT(n) = val;
+  return (jstree) n;
 }
 
-tree js_build_float_str(const char *buf)
+jstree js_build_bool(int val)
 {
-  REAL_VALUE_TYPE d;
-  real_from_string(&d, buf);
-  return build_real(double_type_node, d);
+  gjs_tree_common *n;
+  n = JSTREE_COMMON_ALLOC();
+  JSTREE_TYPE(n) = TyBoolean;
+  JSTREE_OP(n) = OP_BOOL;
+  JSTREE_COMMON_INT(n) = val;
+  return (jstree) n;
 }
 
-tree js_build_string(const char *str)
+jstree js_build_nulval(int v/*v=0=>null, v=1=>undefined*/)
 {
-  int len = strlen(str);
-  tree t = build_string(len, str);
-  tree idxtype = build_index_type(build_int_cst(NULL_TREE, len));
-  tree type = build_array_type(char_type_node, idxtype);
-  TREE_TYPE(t) = type;
-  TREE_CONSTANT(t) = true;
-  TREE_READONLY(t) = true;
-  TREE_STATIC(t) = true;
-  return t;
+  gjs_tree_common *n = JSTREE_COMMON_ALLOC();
+  JSTREE_TYPE(n) = (v)?TyNULL:TyUndefined;
+  JSTREE_OP(n) = OP_NULL;
+  return (jstree) n;
+}
+jstree js_build_float_str(const char *buf)
+{
+  char *fstr = xstrdup(buf);
+  gjs_tree_common *n = JSTREE_COMMON_ALLOC();
+  JSTREE_TYPE(n) = TyFloat;
+  JSTREE_OP(n) = OP_FLOAT;
+  JSTREE_COMMON_FLOAT(n) = fstr;
+  return (jstree) n;
+}
+
+jstree js_build_string(const char *str)
+{
+  char *newstr = xstrdup(str);
+  gjs_tree_common *n;
+  n = JSTREE_COMMON_ALLOC();
+  JSTREE_TYPE(n) = TyString;
+  JSTREE_OP(n) = OP_STRING;
+  JSTREE_COMMON_FLOAT(n) = newstr;
+  return (jstree) n;
+}
+
+jstree js_build2(JSOperator op, JSType type, jstree lhs, jstree rhs)
+{
+  jstree expr = JSTREE_ALLOC();
+  JSTREE_TYPE(expr) = type;
+  JSTREE_OP(expr)   = op;
+  JSTREE_LHS(expr) = lhs;
+  JSTREE_RHS(expr) = rhs;
+  return expr;
+}
+
+jstree js_build_call(JSType type, jstree f, jstree params)
+{
+  jstree expr = JSTREE_ALLOC();
+  JSTREE_TYPE(expr) = type;
+  JSTREE_OP(expr)   = OP_CALL;
+  JSTREE_LHS(expr) = f;
+  JSTREE_RHS(expr) = params;
+  return expr;
 }
 

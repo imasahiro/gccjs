@@ -21,11 +21,13 @@
 #if 0
 #define YYDEBUG 1
 #endif
+#include "gjs.h"
 #include "js-lang.h"
 #include "js-op.h"
 #include "js-tree.h"
 #include "y.js.h"
 
+extern int js_parse (void);
 int js_wrap (void);
 int js_error (const char *);
 static jsbuf_t *global_buf = NULL;
@@ -42,15 +44,15 @@ static char *buf_tochar(void);
 
 %%
 <INITIAL>"null"       {
-    js_lval.token = NULL_TREE;
+    js_lval.token = js_build_nulval(0);
     return T_NULL;
 }
 <INITIAL>"true"       {
-    js_lval.token = boolean_true_node;
+    js_lval.token = js_build_bool(1);
     return T_TRUE;
 }
 <INITIAL>"false"      {
-    js_lval.token = boolean_false_node;
+    js_lval.token = js_build_bool(0);
     return T_FALSE;
 }
 
