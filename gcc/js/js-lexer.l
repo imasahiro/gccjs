@@ -23,6 +23,7 @@
 #endif
 #include "js-lang.h"
 #include "js-op.h"
+#include "js-tree.h"
 #include "y.js.h"
 
 int js_wrap (void);
@@ -55,9 +56,7 @@ static char *buf_tochar(void);
 
 <INITIAL>"var"        return Var;
 <INITIAL>"if"         return If;
-<INITIAL>"else"       {
-    return Else;
-}
+<INITIAL>"else"       return Else;
 <INITIAL>"do"         return Do;
 <INITIAL>"while"      return While;
 <INITIAL>"return"     return Return;

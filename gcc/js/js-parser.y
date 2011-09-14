@@ -27,6 +27,7 @@
 
 #include "js-lang.h"
 #include "js-op.h"
+#include "js-tree.h"
 
 #define TODO() error("TODO");
 extern int js_lex (void);
@@ -35,8 +36,8 @@ int js_error(const char *str);
 
 %union
 {
-  VEC(tree,gc) * vec;
-  tree token;
+  jstree token;
+  VEC(jstree,gc) * vec;
   JSOperator op;
 }
 
@@ -128,12 +129,12 @@ int js_error(const char *str);
 %type <op> AssignmentOperator
 
 %%
+/*TODO RegexLiteral*/
 Literal 
     : NullLiteral
     | BooleanLiteral
     | NumericLiteral
     | StringLiteral
-    | RegexLiteral
     ;
 
 NullLiteral 
@@ -141,7 +142,7 @@ NullLiteral
     ;
 
 BooleanLiteral 
-    : T_TRUE  {}
+    : T_TRUE {}
     | T_FALSE {}
     ;
 
@@ -275,18 +276,18 @@ AssignmentExpressionNoIn
     ;
 
 AssignmentOperator
-    : EQ_LET     /*    = */ { $$ = OpEQLET; }
-    | MUL_LET    /*   *= */ { $$ = OpMULLET; }
-    | DIV_LET    /*   /= */ { $$ = OpDIVLET; }
-    | REM_LET    /*   %= */ { $$ = OpMODLET; }
-    | ADD_LET    /*   += */ { $$ = OpADDLET; }
-    | SUB_LET    /*   -= */ { $$ = OpSUBLET; }
-    | LSHIFT_LET /*  <<= */ { $$ = OpLSFTLET; }
-    | RSHIFT_LET /*  >>= */ { $$ = OpRSFTLET; }
-    | SHIFT_LET  /* >>>= */ { $$ = OpSHFTLET; }
-    | AND_LET    /*   &= */ { $$ = OpANDLET; }
-    | XOR_LET    /*   ^= */ { $$ = OpXORLET; }
-    | OR_LET     /*   |= */ { $$ = OpORLET; }
+    : EQ_LET     /*    = */ { $$ = OP_EQLET; }
+    | MUL_LET    /*   *= */ { $$ = OP_MULLET; }
+    | DIV_LET    /*   /= */ { $$ = OP_DIVLET; }
+    | REM_LET    /*   %= */ { $$ = OP_MODLET; }
+    | ADD_LET    /*   += */ { $$ = OP_ADDLET; }
+    | SUB_LET    /*   -= */ { $$ = OP_SUBLET; }
+    | LSHIFT_LET /*  <<= */ { $$ = OP_LSFTLET; }
+    | RSHIFT_LET /*  >>= */ { $$ = OP_RSFTLET; }
+    | SHIFT_LET  /* >>>= */ { $$ = OP_SHFTLET; }
+    | AND_LET    /*   &= */ { $$ = OP_ANDLET; }
+    | XOR_LET    /*   ^= */ { $$ = OP_XORLET; }
+    | OR_LET     /*   |= */ { $$ = OP_ORLET; }
     ;
 
 ConditionalExpression 

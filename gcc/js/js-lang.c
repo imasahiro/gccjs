@@ -160,6 +160,7 @@ js_langhook_type_for_mode( enum machine_mode mode ATTRIBUTE_UNUSED,
 static tree
 js_langhook_builtin_function( tree decl ATTRIBUTE_UNUSED )
 {
+  debug("builtin function!");
   return decl;
 }
 

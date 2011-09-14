@@ -15,12 +15,9 @@
 #<http://www.gnu.org/licenses/>.
 
 language="js"
-
 compilers="gjs1\$(exeext)"
-
 build_by_default="no"
-
 target_libs=target-libgjs
-
-#gtfiles="\$(srcdir)/js/js-lang.c \$(srcdir)/js/js-decl.c \$(srcdir)/js/js-dot.h"
-gtfiles="\$(srcdir)/js/js-lang.c \$(srcdir)/js/js-lang.h"
+gtfiles="\$(srcdir)/js/js-lang.c \
+         \$(srcdir)/js/js-lang.h \
+         \$(srcdir)/js/js-tree.h"
