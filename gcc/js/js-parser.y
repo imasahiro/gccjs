@@ -36,24 +36,18 @@
 #define debug0(...) debug(__VA_ARGS__)
 #endif
 
-#define TODO() error("TODO");
 extern int js_lex (void);
 int js_error(const char *str);
-#define JSTREE_APPENDTAIL(top, node) {\
-  jstree t_ = top;\
-  while(JSTREE_CHAIN(t_)) {\
-      t_ = JSTREE_CHAIN(t_);\
-  }\
-  JSTREE_CHAIN(t_) = (node);\
-}
 
 location_t CURRENT_LOCATION(void);
+#define DEBUG( ... ) \
+fprintf(stderr, "JS(%d) ", CURRENT_LOCATION());\
+__js_debug__( __FILE__, __LINE__, __VA_ARGS__ );
 %}
 
 %union
 {
   jstree token;
-  VEC(jstree,gc) * vec;
   JSOperator op;
 }
 
@@ -109,7 +103,7 @@ location_t CURRENT_LOCATION(void);
 %nonassoc ELSE
 
 %type <token> Statement StatementList Program SourceElement SourceElements
-%type <token> Literal ArrayLiteral
+%type <token> Literal ArrayLiteral ObjectLiteral
 %type <token> Expression VariableStatement
 %type <token> AssignmentExpression AssignmentExpressionNoIn
 %type <token> VariableDeclaration VariableDeclarationNoIn
@@ -138,6 +132,7 @@ location_t CURRENT_LOCATION(void);
 %type <token> BitwiseXORExpression BitwiseXORExpressionNoIn
 %type <token> LogicalANDExpression LogicalANDExpressionNoIn
 %type <token> LogicalORExpression LogicalORExpressionNoIn
+%type <token> PropertyName PropertyNameAndValueList PropertyAssignment
 
 %type <token> IdentifierName
 
@@ -213,7 +208,6 @@ Block
     }
     | LBRACE StatementList RBRACE {
         $$ = $2;
-        /*$$ = poplevel(js__block_level+1, $2);*/
     }
     ;
 
@@ -324,44 +318,46 @@ EmptyStatement
     ;
 
 ExpressionStatement 
-    : Expression SEMICOLON 
+    : Expression SEMICOLONopt
     ;
 
 IfStatement 
     : If LCBRACE Expression RCBRACE Statement %prec IF_WITHOUT_ELSE {
-        debug("IfStatement1");
-        //$$ = js_build_if_expr($3, $5, NULL_TREE);
+        DEBUG("IfStatement1");
+        $$ = js_build_cond($3, $5, NULL);
     }
     | If LCBRACE Expression RCBRACE Statement Else Statement {
-        debug("IfStatement2");
-        //$$ = js_build_if_expr($3, $5, $7);
+        DEBUG("IfStatement2");
+        $$ = js_build_cond($3, $5, $7);
     }
 ;
 
 IterationStatement
     : Do Statement While LCBRACE Expression RCBRACE SEMICOLON {
-        /*debug("While1");*/
-        //$$ = js_build_while_expr($5, $2, true/*isDoWhile*/);
+        DEBUG("While1");
+        $$ = js_build_loop(LOOP_DOWHILE, NULL, $5/*cond*/, NULL, $2/*body*/);
     }
     | While LCBRACE Expression RCBRACE Statement {
-        /*debug("While2");*/
-        //$$ = js_build_while_expr($3, $5, false);
+        DEBUG("While2");
+        $$ = js_build_loop(LOOP_WHILE, NULL, $3/*cond*/, NULL, $5/*body*/);
     }
     | For LCBRACE ExpressionNoInopt SEMICOLON Expressionopt SEMICOLON Expressionopt RCBRACE Statement {
-        /*debug("for1");*/
-        //$$ = js_build_for_expr($3/*init*/ , $5/*cond*/, $7/*inc*/, $9/*body*/);
+        DEBUG("for1");
+        $$ = js_build_loop(LOOP_FOR, $3/*init*/ , $5/*cond*/, $7/*inc*/, $9/*body*/);
     }
 
     | For LCBRACE Var VariableDeclarationListNoIn SEMICOLON Expressionopt SEMICOLON Expressionopt RCBRACE Statement {
-        /*debug("for2");*/
-        //$$ = js_build_for_expr($4/*init*/ , $6/*cond*/, $8/*inc*/, $10/*body*/);
+        DEBUG("for2");
+        $$ = js_build_loop(LOOP_FOR_VAR, $4/*init*/ , $6/*cond*/, $8/*inc*/, $10/*body*/);
     }
 
     | For LCBRACE LeftHandSideExpression In Expression RCBRACE Statement {
         TODO();
+        $$ = js_build_loop(LOOP_FOR_IN, $3/*init*/ , NULL, $5/*inc*/, $7/*body*/);
     }
     | For LCBRACE Var VariableDeclarationNoIn In Expression RCBRACE Statement {
         TODO();
+        $$ = js_build_loop(LOOP_FOR_VAR_IN, $4/*init*/ , NULL, $6/*inc*/, $8/*body*/);
     }
 ;
 
@@ -383,12 +379,16 @@ BreakStatement
     }
 ;
 
+SEMICOLONopt 
+    : 
+    | SEMICOLON
+;
 ReturnStatement 
-    : Return SEMICOLON {
-        //$$ = js_build_return_stmt(NULL_TREE);
+    : Return SEMICOLONopt {
+        $$ = js_build1(OP_RETURN, TyNone, NULL);
     }
-    | Return Expression SEMICOLON {
-        //$$ = js_build_return_stmt($2);
+    | Return Expression SEMICOLONopt {
+        $$ = js_build1(OP_RETURN, TyValue, $2);
     }
 ;
 
@@ -434,7 +434,8 @@ LabelledStatement
 
 ThrowStatement 
     : Throw Expression {
-        //$$ = js_build_throw_expr($2);
+        DEBUG("ThrowStatement");TODO();
+        $$ = js_build_nop();//js_build_throw_expr($2);
     }
     ;
 
@@ -476,20 +477,19 @@ Program
 
 FunctionDeclaration
     : Function Identifier LCBRACE FormalParameterListopt RCBRACE LBRACE FunctionBody RBRACE {
-        debug("FunctionDeclaration");
-        //js_build_function_decl($2, $7, true);
-        //$$ = NULL_TREE;
+        DEBUG("FunctionDeclaration");
+        $$ = js_build_defun($2, $4, $7);
     }
     ;
 
 FunctionExpression
     :Function LCBRACE FormalParameterListopt RCBRACE LBRACE FunctionBody RBRACE {
-        debug("FunctionExpression1");
-        //$$ = js_build_function_object(NULL_TREE, $6);
+        DEBUG("FunctionExpression1");
+        $$ = js_build_defun(NULL, $3, $6);
     }
     |Function Identifier LCBRACE FormalParameterListopt RCBRACE LBRACE FunctionBody RBRACE {
-        debug("FunctionExpression2");
-        //$$ = js_build_function_object($2, $7);
+        DEBUG("FunctionExpression2");
+        $$ = js_build_defun($2, $4, $7);
     }
     ;
 
@@ -510,11 +510,11 @@ FormalParameterList
 
 FunctionBody 
     : {
-        debug("FunctionBody1");
-        //$$ = alloc_stmt_list();
+        /*DEBUG("FunctionBody1");*/
+        $$ = NULL;
     }
     |SourceElements {
-        debug("FunctionBody2");
+        /*DEBUG("FunctionBody2");*/
     }
     ;
 
@@ -534,57 +534,53 @@ SourceElement
 
 PrimaryExpression 
     : This {
-        //$$ = js_build_this_expr();
+        $$ = js_build_id("this");
     }
     | Identifier {}
     | Literal {}
     | ArrayLiteral {
-        debug("PrimaryExpression4");
+        DEBUG("PrimaryExpression4");
     }
     | ObjectLiteral {
-        /*debug("PrimaryExpression5");*/
+        DEBUG("PrimaryExpression5");
     }
     | LCBRACE Expression RCBRACE {
-        //$$ = $2;
+        $$ = $2;
     }
     ;
 
 ArrayLiteral 
     : LPARENTHESIS RPARENTHESIS {
         /* [] */
-        debug("ArrayLiteral1");
-        //VEC(tree,gc) *elem = VEC_alloc(tree,gc, 0);
-        //$$ = js_build_array_literal(elem);
+        DEBUG("ArrayLiteral1");
+        $$ = js_build_array(NULL);
     }
     | LPARENTHESIS Elision RPARENTHESIS {
         /* [,] [a,] */
-        debug("ArrayLiteral2");
-        //VEC(tree,gc) *elem = VEC_alloc(tree,gc, 0);
-        //$$ = js_build_array_literal(elem);
+        DEBUG("ArrayLiteral2");
+        TODO();
+        $$ = js_build_array(NULL);
     }
     | LPARENTHESIS ElementList RPARENTHESIS {
         /* [a=1, v=3] */
-        debug("ArrayLiteral3");
-        //VEC(tree,gc) *elem = $2;
-        //$$ = js_build_array_literal(elem);
+        DEBUG("ArrayLiteral3");
+        $$ = js_build_array($2);
     }
     | LPARENTHESIS ElementList CAMMA Elisionopt RPARENTHESIS {
         /* [a, b, c] */
-        debug("ArrayLiteral4");
-        //$$ = js_build_array_literal($2);
+        DEBUG("ArrayLiteral4");
+        $$ = js_build_array($2);
     }
 ;
 
 ElementList 
     : Elisionopt AssignmentExpression {
-        //VEC(tree,gc) *elem = VEC_alloc(tree,gc, 0);
-        //VEC_safe_push(tree, gc, elem, $2);
-        //$$ = elem;
+        JSTREE_APPENDTAIL($2, NULL);
+        $$ = $2;
     }
     | ElementList CAMMA Elisionopt AssignmentExpression {
-        //VEC(tree, gc) *elem = $1;
-        //VEC_safe_push(tree, gc, elem, $4);
-        //$$ = elem;
+        JSTREE_APPENDTAIL($1, $4);
+        $$ = $1;
     }
     ;
 
@@ -599,20 +595,46 @@ Elision
     ;
 
 ObjectLiteral 
-    : LBRACE RBRACE
-    | LBRACE PropertyNameAndValueList RBRACE
-    | LBRACE PropertyNameAndValueList CAMMA RBRACE
+    : LBRACE RBRACE {
+        DEBUG("ObjectLiteral1");
+        $$ = js_build1(OP_OBJECT, TyObject, NULL);
+    }
+    | LBRACE PropertyNameAndValueList RBRACE {
+        DEBUG("ObjectLiteral2");
+        $$ = js_build1(OP_OBJECT, TyObject, $2);
+    }
+    | LBRACE PropertyNameAndValueList CAMMA RBRACE {
+        DEBUG("ObjectLiteral3");
+        $$ = js_build1(OP_OBJECT, TyObject, $2);
+    }
     ;
 
 PropertyNameAndValueList 
-    : PropertyAssignment
-    | PropertyNameAndValueList CAMMA PropertyAssignment
+    : PropertyAssignment {
+        DEBUG("PropertyNameAndValueList0");
+        JSTREE_APPENDTAIL($1, NULL);
+    }
+    | PropertyNameAndValueList CAMMA PropertyAssignment {
+        DEBUG("PropertyNameAndValueList1");
+        JSTREE_APPENDTAIL($1, $3);
+    }
     ;
 
 PropertyAssignment 
-    : PropertyName COLON AssignmentExpression
-    | "get" PropertyName LCBRACE RCBRACE LBRACE FunctionBody RBRACE
-    | "set" PropertyName LCBRACE PropertySetParameterList RCBRACE LBRACE FunctionBody RBRACE
+    : PropertyName COLON AssignmentExpression {
+        jstree t;
+        DEBUG("PropertyAssignment1");
+        t = js_build2(OP_FIELD, TyValue, js_build_id("this"), $1);
+        $$ = js_build2(OP_SetField, TyValue, t, $3);
+    }
+    | "get" PropertyName LCBRACE RCBRACE LBRACE FunctionBody RBRACE {
+        DEBUG("PropertyAssignment2");
+        TODO();
+    }
+    | "set" PropertyName LCBRACE PropertySetParameterList RCBRACE LBRACE FunctionBody RBRACE {
+        DEBUG("PropertyAssignment3");
+        TODO();
+    }
     ;
 
 PropertyName 
@@ -632,50 +654,52 @@ Identifier
 
 MemberExpression 
     : PrimaryExpression {
-        /*debug("MemberExpression1");*/
+        /*DEBUG("MemberExpression1");*/
     }
     | FunctionExpression {
-        //debug("MemberExpression2");
+        //DEBUG("MemberExpression2");
     }
     | MemberExpression LPARENTHESIS Expression RPARENTHESIS {
-        //debug("MemberExpression3");
+        //DEBUG("MemberExpression3");
         //tree expr = js_build_array_expr($1, $3);
         //$$ = expr;
     }
     | MemberExpression DOT IdentifierName {
-        //debug("MemberExpression4");
+        //DEBUG("MemberExpression4");
+        $$ = js_build2(OP_FIELD, TyValue, $1, $3);
         //$$ = js_build_propaty_expr($1, $3);
     }
     | New MemberExpression Arguments {
-        /*debug("MemberExpression5");*/
+        /*DEBUG("MemberExpression5");*/
         //$$ = js_build_new_expr($2, $3);
+        $$ = js_build_call(OP_NEW, TyValue, $2, $3);
     }
     ;
 
 NewExpression 
     : MemberExpression {
-        /*debug("NewExpression1");*/
+        /*DEBUG("NewExpression1");*/
     }
     | New NewExpression {
-        debug("NewExpression2");
+        DEBUG("NewExpression2");
         /*$$ = js_build_new_expr($2, NULL);*/
     }
     ;
 
 CallExpression 
     : MemberExpression Arguments {
-        debug("CallExpression1");
-        $$ = js_build_call(TyValue, $1, $2);
+        DEBUG("CallExpression1");
+        $$ = js_build_call(OP_CALL, TyValue, $1, $2);
     }
     | CallExpression Arguments {
-        debug("CallExpression2");
-        $$ = js_build_call(TyValue, $1, $2);
+        DEBUG("CallExpression2");
+        $$ = js_build_call(OP_CALL, TyValue, $1, $2);
     }
     | CallExpression LPARENTHESIS Expression RPARENTHESIS {
-        /*debug("CallExpression3");*/
+        DEBUG("CallExpression3");
     }
     | CallExpression DOT IdentifierName {
-        /*debug("CallExpression4");*/
+        DEBUG("CallExpression4");
     }
     ;
 
@@ -699,62 +723,69 @@ ArgumentList
 
 LeftHandSideExpression 
     : NewExpression {
-        /*debug("LeftHandSideExpression1");*/
+        /*DEBUG("LeftHandSideExpression1");*/
         /*$$ = js_build_propaty_expr($1);*/
     }
     | CallExpression {
-        /*debug("LeftHandSideExpression2");*/
+        /*DEBUG("LeftHandSideExpression2");*/
     }
     ;
 
 PostfixExpression
     : LeftHandSideExpression {}
     | LeftHandSideExpression PLUSPLUS {
-        //$$ = js_build_op1_expr(OpPOST_INC, $1);
+        $$ = js_build1(OP_POST_INC, TyValue, $1);
     }
     | LeftHandSideExpression MINUSMINUS {
-        //$$ = js_build_op1_expr(OpPOST_INC, $1);
+        $$ = js_build1(OP_POST_DEC, TyValue, $1);
     }
     ;
 
 UnaryExpression 
     : PostfixExpression {}
     | Delete UnaryExpression {
-        debug("delete");
+        DEBUG("delete");
+        $$ = js_build_call(OP_CALL, TyValue, js_build_id("delete"), $2);
     }
     | Void UnaryExpression {
-        debug("void");
+        DEBUG("void");
+        $$ = js_build_call(OP_CALL, TyValue, js_build_id("void"), $2);
     }
     | Typeof UnaryExpression {
-        //$$ = js_build_typeof_expr($2);
+        DEBUG("Typeof");
+        $$ = js_build_call(OP_CALL, TyValue, js_build_id("typeof"), $2);
     }
     | PLUSPLUS   UnaryExpression {
-        debug("++ UnaryExpression");
-        //$$ = js_build_op1_expr(OpPRED_INC, $2);
+        DEBUG("++ UnaryExpression");
+        $$ = js_build1(OP_PRED_INC, TyValue, $2);
     }
     | MINUSMINUS UnaryExpression {
-        debug("-- UnaryExpression");
-        //$$ = js_build_op1_expr(OpPRED_DEC, $2);
+        DEBUG("-- UnaryExpression");
+        $$ = js_build1(OP_PRED_DEC, TyValue, $2);
     }
     | ADD  UnaryExpression {
-        debug("+ val");
+        DEBUG("+ val");
+        $$ = js_build2(OP_Plus, TyValue, $2, NULL);
     }
     | SUB  UnaryExpression {
-        debug("- val");
+        DEBUG("- val");
+        $$ = js_build2(OP_Minus, TyValue, $2, NULL);
     }
     | INV  UnaryExpression {
-        debug("INV val");
+        DEBUG("INV val");
+        TODO();
+        //$$ = js_build1(OP_Inv, TyValue, $2);
     }
     | NOT  UnaryExpression {
-        debug("NOT UnaryExpression");
-        //$$ = js_build_op1_expr(OpNot, $2);
+        DEBUG("NOT UnaryExpression");
+        $$ = js_build1(OP_Not, TyValue, $2);
     }
     ;
 
 MultiplicativeExpression
     : UnaryExpression
     | MultiplicativeExpression MUL UnaryExpression {
-        debug("MultiplicativeExpression1");
+        DEBUG("MultiplicativeExpression1");
         $$ = js_build2(OP_Mul, TyValue, $1, $3);
     }
     | MultiplicativeExpression DIV UnaryExpression {
@@ -782,7 +813,7 @@ AdditiveExpression
 ShiftExpression 
     : AdditiveExpression
     | ShiftExpression LSHIFT AdditiveExpression {
-        debug("ShiftExpression");
+        DEBUG("ShiftExpression");
         $$ = js_build2(OP_Lshift, TyValue, $1, $3);
     }
     | ShiftExpression RSHIFT AdditiveExpression {
@@ -888,35 +919,36 @@ BitwiseORExpression
     ;
 
 LogicalANDExpression 
-    : BitwiseORExpression
+    : BitwiseORExpression {}
     | LogicalANDExpression LAND BitwiseORExpression {
         $$ = js_build2(OP_LAND, TyValue, $1, $3);
     }
     ;
 
 LogicalORExpression 
-    : LogicalANDExpression
+    : LogicalANDExpression {}
     | LogicalORExpression LOR LogicalANDExpression {
+        DEBUG("LogicalORExpression");
         $$ = js_build2(OP_LOR, TyValue, $1, $3);
     }
     ;
 
 BitwiseANDExpressionNoIn
-    : EqualityExpressionNoIn
+    : EqualityExpressionNoIn {}
     | BitwiseANDExpressionNoIn AND EqualityExpressionNoIn {
         $$ = js_build2(OP_And, TyValue, $1, $3);
     }
     ;
 
 BitwiseXORExpressionNoIn
-    : BitwiseANDExpressionNoIn
+    : BitwiseANDExpressionNoIn {}
     | BitwiseXORExpressionNoIn XOR BitwiseANDExpressionNoIn {
         $$ = js_build2(OP_Xor, TyValue, $1, $3);
     }
     ;
 
 BitwiseORExpressionNoIn
-    : BitwiseXORExpressionNoIn
+    : BitwiseXORExpressionNoIn {}
     | BitwiseORExpressionNoIn OR BitwiseXORExpressionNoIn {
         $$ = js_build2(OP_Or, TyValue, $1, $3);
     }
@@ -940,7 +972,7 @@ LogicalORExpressionNoIn
 
 location_t CURRENT_LOCATION(void)
 {
-    location_t loc = ((location_t)js_lloc.first_line);
+    location_t loc = ((location_t)js_lloc.last_line);
     linemap_line_start(line_table, loc, 0);
     return loc;
 }

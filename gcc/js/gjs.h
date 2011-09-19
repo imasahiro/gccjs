@@ -17,6 +17,7 @@ along with GCC; see the file COPYING3.  If not see
 #ifndef __JS_H_
 #define __JS_H_
 
+extern void jstree_write_globals(void);
 extern int js_enable_dump( const char * );
 extern void js_set_prefix( const char * );
 
@@ -34,7 +35,8 @@ extern void __js_debug__( const char *, unsigned int,
 			   const char *, ... )
   __attribute__ ((format (printf, 3, 4))) ;
 
-#define debug( ... )				\
-  __js_debug__( __FILE__, __LINE__, __VA_ARGS__ );
+#define debug( ... ) __js_debug__( __FILE__, __LINE__, __VA_ARGS__ );
+#define TODO() debug("TODO");error("TODO")
+
 
 #endif /* __JS_H_ */

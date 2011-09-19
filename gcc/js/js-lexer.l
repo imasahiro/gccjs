@@ -33,14 +33,17 @@ int js_error (const char *);
 static jsbuf_t *global_buf = NULL;
 static void write_buf(char *str);
 static char *buf_tochar(void);
+static char *buf_raw(void);
+static void location_lines(YYLTYPE *loc, int num);
 /*static void js_unput (int, register char *) ATTRIBUTE_UNUSED;*/
 /*static int input (void) ATTRIBUTE_UNUSED;*/
+static int REGEXP_ACTION(char *yytext);
 %}
 
 %pointer
 %option yylineno
 
-%start COMMENT MULTI_COMMENT DoubleStringCharacters SingleStringCharacters RegexCharacters
+%start COMMENT MULTI_COMMENT DoubleStringCharacters SingleStringCharacters RegexCharacterFirst
 
 %%
 <INITIAL>"null"       {
@@ -56,82 +59,88 @@ static char *buf_tochar(void);
     return T_FALSE;
 }
 
-<INITIAL>"var"        return Var;
-<INITIAL>"if"         return If;
-<INITIAL>"else"       return Else;
-<INITIAL>"do"         return Do;
-<INITIAL>"while"      return While;
-<INITIAL>"return"     return Return;
-<INITIAL>"for"        return For;
-<INITIAL>"in"         return In;
-<INITIAL>"new"        return New;
-<INITIAL>"void"       return Void;
-<INITIAL>"this"       return This;
-<INITIAL>"typeof"     return Typeof;
-<INITIAL>"delete"     return Delete;
-<INITIAL>"case"       return Case;
-<INITIAL>"continue"   return Continue;
-<INITIAL>"break"      return Break;
-<INITIAL>"default"    return Default;
-<INITIAL>"throw"      return Throw;
-<INITIAL>"with"       return With;
-<INITIAL>"switch"     return Switch;
-<INITIAL>"debugger"   return Debugger;
-<INITIAL>"function"   return Function;
-<INITIAL>"try"        return Try;
-<INITIAL>"catch"      return CATCH;
-<INITIAL>"finally"    return FINALLY;
-<INITIAL>"instanceof" return Instanceof;
+<INITIAL>"var"        { return Var; }
+<INITIAL>"if"         { return If; }
+<INITIAL>"else"       { return Else; }
+<INITIAL>"do"         { return Do; }
+<INITIAL>"while"      { return While; }
+<INITIAL>"return"     { return Return; }
+<INITIAL>"for"        { return For; }
+<INITIAL>"in"         { return In; }
+<INITIAL>"new"        { return New; }
+<INITIAL>"void"       { return Void; }
+<INITIAL>"this"       { return This; }
+<INITIAL>"typeof"     { return Typeof; }
+<INITIAL>"delete"     { return Delete; }
+<INITIAL>"case"       { return Case; }
+<INITIAL>"continue"   { return Continue; }
+<INITIAL>"break"      { return Break; }
+<INITIAL>"default"    { return Default; }
+<INITIAL>"throw"      { return Throw; }
+<INITIAL>"with"       { return With; }
+<INITIAL>"switch"     { return Switch; }
+<INITIAL>"debugger"   { return Debugger; }
+<INITIAL>"function"   { return Function; }
+<INITIAL>"try"        { return Try; }
+<INITIAL>"catch"      { return CATCH; }
+<INITIAL>"finally"    { return FINALLY; }
+<INITIAL>"instanceof" { return Instanceof; }
 
-<INITIAL>","       return CAMMA;
-<INITIAL>"."       return DOT;
-<INITIAL>"+"       return ADD;
-<INITIAL>"-"       return SUB;
-<INITIAL>"*"       return MUL;
-<INITIAL>"/"       return DIV;
-<INITIAL>"%"       return REM;
+<INITIAL>","       { return CAMMA; }
+<INITIAL>"."       { return DOT; }
 
-<INITIAL>"~"       return INV;
-<INITIAL>"!"       return NOT;
-<INITIAL>"<<"     return LSHIFT;
-<INITIAL>">>"     return RSHIFT;
-<INITIAL>"<="      return LTE;
-<INITIAL>"<"       return LT;
-<INITIAL>">="      return GTE;
-<INITIAL>">"       return GT;
-<INITIAL>":"       return COLON;
-<INITIAL>";"       return SEMICOLON;
-<INITIAL>"{"       {
-    return LBRACE;
+<INITIAL>"~"       { return INV; }
+<INITIAL>"!"       { return NOT; }
+<INITIAL>">>>"     { return SHIFT; }
+<INITIAL>"<<"      { return LSHIFT; }
+<INITIAL>">>"      { return RSHIFT; }
+<INITIAL>"<="      { return LTE; }
+<INITIAL>"<"       { return LT; }
+<INITIAL>">="      { return GTE; }
+<INITIAL>"||"      { return LOR; }
+<INITIAL>"|"       { return OR; }
+<INITIAL>"&&"      { return LAND; }
+<INITIAL>"&"       { return AND; }
+<INITIAL>">"       { return GT; }
+<INITIAL>"?"       { return QUESTION; }
+<INITIAL>":"       { return COLON; }
+<INITIAL>";"       { return SEMICOLON; }
+<INITIAL>"{"       { return LBRACE; }
+<INITIAL>"}"       { return RBRACE; }
+<INITIAL>"("       { return LCBRACE; }
+<INITIAL>")"       { return RCBRACE; }
+<INITIAL>"["       { return LPARENTHESIS; }
+<INITIAL>"]"       { return RPARENTHESIS; }
+<INITIAL>"++"      { return PLUSPLUS; }
+<INITIAL>"--"      { return MINUSMINUS; }
+<INITIAL>"=="      { return EQEQ;     /* ==  */ }
+<INITIAL>"!="      { return NEQ;      /* !=  */ }
+<INITIAL>"==="     { return STREQ;    /* === */ }
+<INITIAL>"!=="     { return STRNEQ;   /* !== */ }
+<INITIAL>"="       { return EQ_LET;     /* = */ }
+<INITIAL>"*="      { return MUL_LET;    /* *= */ }
+<INITIAL>"/="      { REGEXP_ACTION(yytext); return DIV_LET;    /* /= */ }
+<INITIAL>"%="      { return REM_LET;    /* %= */ }
+<INITIAL>"+="      { return ADD_LET;    /* += */ }
+<INITIAL>"-="      { return SUB_LET;    /* -= */ }
+<INITIAL>">>>="    { return SHIFT_LET;  /* >>>= */ }
+<INITIAL>"<<="     { return LSHIFT_LET; /* <<=  */ }
+<INITIAL>">>="     { return RSHIFT_LET; /* >>=  */ }
+<INITIAL>"&="      { return AND_LET;    /* &= */ }
+<INITIAL>"^="      { return XOR_LET;    /* ^= */ }
+<INITIAL>"|="      { return OR_LET;     /* |= */ }
+
+<INITIAL>"+"       { return ADD; }
+<INITIAL>"-"       { return SUB; }
+<INITIAL>"*"       { return MUL; }
+<INITIAL>"/"       { REGEXP_ACTION(yytext); return DIV; }
+<INITIAL>"%"       { return REM; }
+
+
+<INITIAL>[ \t] {  }
+<INITIAL>(\r\n|\r|\n) {
+    location_lines(&js_lloc, yyleng);
 }
-<INITIAL>"}"       {
-    return RBRACE;
-}
-<INITIAL>"("       return LCBRACE;
-<INITIAL>")"       return RCBRACE;
-<INITIAL>"["       return LPARENTHESIS;
-<INITIAL>"]"       return RPARENTHESIS;
-<INITIAL>"++"      return PLUSPLUS;
-<INITIAL>"--"      return MINUSMINUS;
-<INITIAL>"=="      return EQEQ;     /* ==  */
-<INITIAL>"!="      return NEQ;      /* !=  */
-<INITIAL>"==="     return STREQ;    /* === */
-<INITIAL>"!=="     return STRNEQ;   /* !== */
-<INITIAL>"="       return EQ_LET;     /* = */
-<INITIAL>"*="      return MUL_LET;    /* *= */
-<INITIAL>"/="      return DIV_LET;    /* /= */
-<INITIAL>"%="      return REM_LET;    /* %= */
-<INITIAL>"+="      return ADD_LET;    /* += */
-<INITIAL>"-="      return SUB_LET;    /* -= */
-<INITIAL>"<<="     return LSHIFT_LET; /* <<=  */
-<INITIAL>">>="     return RSHIFT_LET; /* >>=  */
-<INITIAL>">>>="    return SHIFT_LET;  /* >>>= */
-<INITIAL>"&="      return AND_LET;    /* &= */
-<INITIAL>"^="      return XOR_LET;    /* ^= */
-<INITIAL>"|="      return OR_LET;     /* |= */
-
-<INITIAL>[ \t] ;
-<INITIAL>[ \t\r\n] {}
 
 <INITIAL>\" {
     BEGIN DoubleStringCharacters;
@@ -139,17 +148,17 @@ static char *buf_tochar(void);
 <INITIAL>\' {
     BEGIN SingleStringCharacters;
 }
-<INITIAL>"/" {
-    BEGIN RegexCharacters;
-}
-<INITIAL>"//"  BEGIN COMMENT;
+<INITIAL>"//"  {  BEGIN COMMENT;}
 <COMMENT>. ;
 <COMMENT>\n  {
+    location_lines(&js_lloc, yyleng);
     BEGIN INITIAL;
 }
 <INITIAL>"/*"  BEGIN MULTI_COMMENT;
 <MULTI_COMMENT>. ;
-<MULTI_COMMENT>\n  {}
+<MULTI_COMMENT>\n  {
+    location_lines(&js_lloc, yyleng);
+}
 <MULTI_COMMENT>"*/"  {
     BEGIN INITIAL;
 }
@@ -182,6 +191,7 @@ static char *buf_tochar(void);
 }
 <DoubleStringCharacters>\n  {
     js_error("terminate string without '\"'");
+    location_lines(&js_lloc, yyleng);
 }
 <DoubleStringCharacters>\\\" {
     /* '"'  */
@@ -190,6 +200,7 @@ static char *buf_tochar(void);
 <DoubleStringCharacters>\\n  {
     /* '\n' */
     write_buf(yytext);
+    location_lines(&js_lloc, yyleng);
 }
 <DoubleStringCharacters>\\t {
     /* '\t' */
@@ -211,6 +222,7 @@ static char *buf_tochar(void);
 }
 <SingleStringCharacters>\n  {
     js_error("terminate string without '\''");
+    location_lines(&js_lloc, yyleng);
 }
 <SingleStringCharacters>\\\' {
     /* '"'  */
@@ -219,6 +231,7 @@ static char *buf_tochar(void);
 <SingleStringCharacters>\\n  {
     /* '\n' */
     write_buf(yytext);
+    location_lines(&js_lloc, yyleng);
 }
 <SingleStringCharacters>\\t  {
     /* '\t' */
@@ -233,39 +246,63 @@ static char *buf_tochar(void);
     write_buf(yytext);
 }
 
-<RegexCharacters>"/" {
-    BEGIN INITIAL;
-    js_lval.token = js_build_string(buf_tochar());
-    return RegexLiteral;
-}
-<RegexCharacters>\n  {
-    js_error("terminate string without '\''");
-}
-<RegexCharacters>\/ {
-    /* '/'  */
-    write_buf(yytext);
-}
-<RegexCharacters>\\\\ {
-    /* '\\' */
-    write_buf(yytext);
-}
-<RegexCharacters>.    {
-    /*  */
-    write_buf(yytext);
-}
 
 <INITIAL>. {
     fprintf(stderr, "lexical error\n");
     exit(1);
 }
 %%
+//<INITIAL>"/" {
+//    BEGIN RegexCharacterFirst;
+//}
+
+//<RegexCharacterFirst>"/" {
+//    BEGIN COMMENT;
+//}
+//<RegexCharacterFirst>"*" {
+//    BEGIN MULTI_COMMENT;
+//}
+//<RegexCharacterFirst>"[" {
+//    write_buf(yytext);
+//    BEGIN RegexCharacterClass;
+//}
+//<RegexCharacterFirst>"\\" {
+//    write_buf(yytext);
+//    BEGIN RegexCharacterBackslashSequence;
+//}
+//
+//<RegexCharacterFirst>.  {
+//    write_buf(yytext);
+//    BEGIN RegexCharacters;
+//}
+//
+//<RegexCharacters>\/ {
+//    /* '/'  */
+//    write_buf(yytext);
+//}
+//<RegexCharacters>\\\\ {
+//    /* '\\' */
+//    write_buf(yytext);
+//}
+//<RegexCharacters>.    {
+//    /*  */
+//    write_buf(yytext);
+//}
+
 /**/ 
+static char *buf_raw(void)
+{
+  if (global_buf)
+    return js_buf_raw(global_buf);
+  else
+    return "";
+}
 static char *buf_tochar(void)
 {
   int len;
   char *str;
   if (global_buf == NULL)
-      write_buf("");
+      write_buf((char*)"");
   str = js_buf_tochar(global_buf, &len);
   js_buf_clear(global_buf);
   return str;
@@ -276,6 +313,12 @@ static void write_buf(char *str)
       global_buf = js_buf_new();
   }
   js_buf_write(global_buf, str, strlen(str));
+}
+
+static void location_lines(YYLTYPE *loc, int num)
+{
+  loc->last_column = 0;
+  loc->last_line += num;
 }
 
 int js_wrap (void)
@@ -289,8 +332,9 @@ int js_lex_parse( const char * gjs_in )
   debug("trying to open <%s>!", gjs_in);
   if( fd ) {
       yyin = fd;
+      linemap_add(line_table, LC_ENTER, 0, gjs_in, 1);
       retval = js_parse( );
-      fclose( fd );
+      fclose(fd);
       yylex_destroy( );
   } else {
       fprintf(stderr, "error opening <%s>!\n", gjs_in );
@@ -302,4 +346,8 @@ int js_error (const char *msg)
 {
   error("%s", msg);
   exit(FATAL_EXIT_CODE);
+}
+static int REGEXP_ACTION(char *yytext)
+{
+  return 0;
 }

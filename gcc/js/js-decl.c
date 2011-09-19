@@ -39,113 +39,16 @@ along with GCC; see the file COPYING3.  If not see
 
 #include "gjs.h"
 #include "js-op.h"
-typedef enum jsfieldop {
-    FIELD_NONE,
-    FIELD_SET,
-    FIELD_GET
-} jsfieldop;
 
-static void DUMP_TREE(jstree t);
-static void DUMP_TREE_FIELD(jsfieldop op, jstree t)
+static jstree JSTREE_NEW(JSType type, JSOperator op, jstree lhs, jstree rhs)
 {
-  switch(op) {
-    case FIELD_NONE:
-      break;
-    case FIELD_SET:
-      fprintf(stderr, "set ");
-      break;
-    case FIELD_GET:
-      fprintf(stderr, "get ");
-      break;
-  }
-  DUMP_TREE(JSTREE_LHS(t));
-  fprintf(stderr, ".");
-  DUMP_TREE(JSTREE_RHS(t));
-  fprintf(stderr, "%p", t);
-}
-
-static void DUMP_TREE_CALL(const char *name, jstree t)
-{
-  fprintf(stderr, "%s ", name);
-  DUMP_TREE(JSTREE_LHS(t));
-  fprintf(stderr, "(");
-  DUMP_TREE(JSTREE_RHS(t));
-  fprintf(stderr, ")");
-}
-
-static void DUMP_TREE(jstree t)
-{
-  switch(JSTREE_OP(t)) {
-    case OP_Undef:
-      fprintf(stderr, "undefined");
-      break;
-    case OP_NULL:
-      fprintf(stderr, "null");
-      break;
-    case OP_BOOL:
-      fprintf(stderr, "bool(%s)", JSTREE_COMMON_INT(t)?"true":"false");
-      break;
-    case OP_INTEGER:
-      fprintf(stderr, "int(%d)", JSTREE_COMMON_INT(t));
-      break;
-    case OP_FLOAT:
-      fprintf(stderr, "float(%s)", JSTREE_COMMON_STRING(t));
-      break;
-    case OP_STRING:
-      fprintf(stderr, "string(%s)", JSTREE_COMMON_STRING(t));
-      break;
-    case OP_LET:
-    case OP_EQLET:
-      fprintf(stderr, "let ");
-      DUMP_TREE(JSTREE_LHS(t));
-      fprintf(stderr, "= ");
-      DUMP_TREE(JSTREE_RHS(t));
-      break;
-    case OP_DEFUN:
-      fprintf(stderr, "defun ");
-      DUMP_TREE(JSTREE_LHS(t));
-      fprintf(stderr, "= ");
-      DUMP_TREE(JSTREE_RHS(t));
-      break;
-    case OP_NEW:
-      DUMP_TREE_CALL("new", t);
-      break;
-    case OP_IDENTIFIER:
-      fprintf(stderr, "id:%s", JSTREE_COMMON_STRING(t));
-      break;
-    case OP_PARM:
-      fprintf(stderr, "param=%p", t);
-      break;
-    case OP_FIELD:
-      DUMP_TREE_FIELD(FIELD_NONE, t);
-      break;
-    case OP_GetField:
-      DUMP_TREE_FIELD(FIELD_GET, t);
-      break;
-    case OP_SetField:
-      DUMP_TREE_FIELD(FIELD_SET, t);
-      break;
-    case OP_CALL:
-      DUMP_TREE_CALL("call", t);
-      break;
-    case OP_RETURN:
-      fprintf(stderr, "return ");
-      DUMP_TREE(JSTREE_LHS(t));
-      break;
-    default:
-      fprintf(stderr, "'OP=%d, %p'", JSTREE_OP(t), t);
-      break;
-  }
-  if (JSTREE_CHAIN(t)) {
-      fprintf(stderr, ";\n");
-      DUMP_TREE(JSTREE_CHAIN(t));
-  }
-}
-
-void jstree_dump(jstree t)
-{
-  DUMP_TREE(t);
-  fprintf(stderr, "\n");
+  jstree expr = JSTREE_ALLOC();
+  JSTREE_TYPE(expr) = type;
+  JSTREE_OP(expr)   = op;
+  JSTREE_LHS(expr) = lhs;
+  JSTREE_RHS(expr) = rhs;
+  JSTREE_CHAIN(expr) = NULL;
+  return expr;
 }
 
 jstree js_build_id(const char *str)
@@ -213,23 +116,90 @@ jstree js_build_string(const char *str)
   return (jstree) n;
 }
 
-jstree js_build2(JSOperator op, JSType type, jstree lhs, jstree rhs)
+jstree js_build_array(jstree list)
 {
-  jstree expr = JSTREE_ALLOC();
-  JSTREE_TYPE(expr) = type;
-  JSTREE_OP(expr)   = op;
-  JSTREE_LHS(expr) = lhs;
-  JSTREE_RHS(expr) = rhs;
+  return js_build1(OP_ARRAY, TyArray, list);
+}
+
+jstree js_build_nop(void)
+{
+  return js_build1(OP_NOP, TyNone, NULL);
+}
+
+jstree js_build1(JSOperator op, JSType type, jstree lhs)
+{
+  jstree expr = JSTREE_NEW(type, op, lhs, NULL);
   return expr;
 }
 
-jstree js_build_call(JSType type, jstree f, jstree params)
+jstree js_build2(JSOperator op, JSType type, jstree lhs, jstree rhs)
 {
-  jstree expr = JSTREE_ALLOC();
-  JSTREE_TYPE(expr) = type;
-  JSTREE_OP(expr)   = OP_CALL;
-  JSTREE_LHS(expr) = f;
-  JSTREE_RHS(expr) = params;
+  jstree expr = JSTREE_NEW(type, op, lhs, rhs);
   return expr;
+}
+
+jstree js_build3(JSOperator op, JSType type, jstree lhs, jstree mhs, jstree rhs)
+{
+  jstree cons = JSTREE_NEW(TyNone, OP_NOP, mhs, rhs);
+  jstree expr = JSTREE_NEW(type, op, lhs, cons);
+  return expr;
+}
+
+jstree js_build_call(JSOperator op, JSType type, jstree f, jstree params)
+{
+  jstree expr = JSTREE_NEW(type, op, f, params);
+  return expr;
+}
+
+jstree js_build_loop(enum loopmode loop, jstree init , jstree cond, jstree inc, jstree body)
+{
+  jstree expr = (init)? (init):JSTREE_NEW(TyNone, OP_NOP, NULL, NULL);
+  if (loop == LOOP_FOR || loop == LOOP_FOR_VAR) {
+    /*
+     * init -> body -> inc -> cond 
+     *          |               |
+     *          +---------------+
+     */
+    jstree exitExpr = JSTREE_NEW(TyNone, OP_EXIT, cond, NULL);
+    jstree loopExpr = JSTREE_NEW(TyNone, OP_LOOP, body, NULL);
+    JSTREE_APPENDTAIL(body, inc);
+    JSTREE_APPENDTAIL(body, exitExpr);
+    JSTREE_APPENDTAIL(expr, loopExpr);
+    return expr;
+  }
+  if (loop == LOOP_FOR_IN || loop == LOOP_FOR_VAR_IN) {
+    /*
+     * init -> body -> inc -> cond 
+     *          |               |
+     *          +---------------+
+     */
+    jstree exitExpr = JSTREE_NEW(TyNone, OP_EXIT, cond, NULL);
+    jstree loopExpr = JSTREE_NEW(TyNone, OP_LOOP, body, NULL);
+    JSTREE_APPENDTAIL(body, inc);
+    JSTREE_APPENDTAIL(body, exitExpr);
+    JSTREE_APPENDTAIL(expr, loopExpr);
+    TODO();
+    return expr;
+  }
+  TODO();
+  return NULL;
+}
+
+jstree js_build_cond(jstree cond, jstree thenExpr, jstree elseExpr)
+{
+  jstree cons = JSTREE_NEW(TyNone, OP_NOP, thenExpr, elseExpr);
+  jstree expr = JSTREE_NEW(TyNone, OP_COND, cond, cons);
+  return expr;
+}
+
+static int tmpvalue = 0;
+jstree js_build_defun(jstree name, jstree params, jstree body)
+{
+  if (name == NULL) {
+      char buf[32] = {};
+      sprintf(buf, "__tmp%d", tmpvalue++);
+      name = js_build_id(buf);
+  }
+  return js_build3(OP_DEFUN, TyFunction, name, params, body);
 }
 

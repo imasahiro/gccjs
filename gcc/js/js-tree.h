@@ -2,11 +2,14 @@
 #define JS_TREE_H
 
 typedef enum {
+    OP_NOP,
     OP_NULL,
     OP_BOOL,
     OP_INTEGER,
     OP_FLOAT,
     OP_STRING,
+    OP_ARRAY,
+    OP_OBJECT,
     OP_LET,
     OP_DEFUN,
     OP_NEW,
@@ -16,7 +19,10 @@ typedef enum {
     OP_GetField,
     OP_SetField,
     OP_CALL,
+    OP_LOOP,
+    OP_EXIT,
     OP_RETURN,
+    OP_COND,
     OP_EQLET,   /*    = */
     OP_MULLET,  /*   *= */
     OP_DIVLET,  /*   /= */
@@ -67,10 +73,26 @@ typedef enum {
     TyString,
     TyArray,
     TyObject,
+    TyFunction,
     TyValue,
     TyNone,
     TY_MAX
 } JSType;
+
+enum loopmode {
+    LOOP_FOR,
+    LOOP_FOR_IN,
+    LOOP_FOR_VAR,
+    LOOP_FOR_VAR_IN,
+    LOOP_DOWHILE,
+    LOOP_WHILE
+};
+
+typedef enum jsfieldop {
+    FIELD_NONE,
+    FIELD_SET,
+    FIELD_GET
+} jsfieldop;
 
 typedef struct GTY(()) gjs_tree_common {
     location_t loc;
@@ -112,6 +134,14 @@ typedef struct GTY(()) gjs_tree_t {
 #define JSTREE_RHS_C(x) ((x)->r.tc)
 #define JSTREE_ALLOC()  ((gjs_tree_t*)(jstree_alloc_()))
 #define JSTREE_IDENTIFIER_POINTER(x) (JSTREE_COMMON_STRING(JSTREE_LHS_C(x)))
+
+#define JSTREE_APPENDTAIL(top, node) {\
+  jstree t_ = top;\
+  while(JSTREE_CHAIN(t_)) {\
+      t_ = JSTREE_CHAIN(t_);\
+  }\
+  JSTREE_CHAIN(t_) = (node);\
+}
 
 typedef struct gjs_tree_t * jstree;
 DEF_VEC_P (jstree);

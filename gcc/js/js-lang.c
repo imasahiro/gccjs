@@ -40,6 +40,7 @@ along with GCC; see the file COPYING3.  If not see
 
 #include "gjs.h"
 #include "js-tree.h"
+#include "js-op.h"
 
 /* Language-dependent contents of a type.  */
 struct GTY(()) lang_type {
@@ -184,14 +185,12 @@ js_langhook_getdecls( void )
   return NULL;
 }
 
-jstree global_tree = NULL;
-
+extern void jstree_write_globals(void);
 /* Write out globals.  */
-static void
-js_langhook_write_globals( void )
+static void js_langhook_write_globals( void )
 {
   debug("write globals!\n");
-  jstree_dump(global_tree);
+  jstree_write_globals();
 }
 
 static int
@@ -237,7 +236,7 @@ void __js_debug__(const char * file, unsigned int lineno,
                   const char * fmt, ... )
 {
   va_list args;
-  fprintf( stderr, "debug: <%s:%i> -> ", file, lineno );
+  fprintf( stderr, "debug:<%s:%i> -> ", file, lineno );
   va_start( args, fmt );
   vfprintf( stderr, fmt, args );
   va_end( args );

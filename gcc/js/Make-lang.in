@@ -50,12 +50,20 @@ js-buffer.o: $(GCCJS_HEADERS) $(srcdir)/js/js-buffer.c $(CONFIG_H) $(SYSTEM_H) c
   gt-js-js-lang.h gtype-js.h
 	$(CC) $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(GJS_CFLAGS) $(INCLUDES) \
 		$(LDFLAGS) -c -o $@ $(srcdir)/js/js-buffer.c
+
+js-pass.o: $(GCCJS_HEADERS) $(srcdir)/js/js-pass.c $(CONFIG_H) $(SYSTEM_H) coretypes.h $(TM_H) \
+  $(FLAGS_H) toplev.h $(GGC_H) $(TREE_H) $(DIAGNOSTIC_H) input.h options.h opts.h \
+  gt-js-js-lang.h gtype-js.h
+	$(CC) $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(GJS_CFLAGS) $(INCLUDES) \
+		$(LDFLAGS) -c -o $@ $(srcdir)/js/js-pass.c
+
 #
 GJS_OBJS = \
 	js-parser.o \
 	js-lexer.o \
 	js-lang.o \
 	js-buffer.o \
+	js-pass.o \
 	js-decl.o
 
 #	js-decl.o \

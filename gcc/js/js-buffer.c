@@ -47,6 +47,11 @@ void js_buf_write(jsbuf_t *buf, char *str, int len)
   buf->size += len;
 }
 
+char *js_buf_raw(jsbuf_t *buf)
+{
+  return buf->buf;
+}
+
 char *js_buf_tochar(jsbuf_t *buf, int *len)
 {
   char *str = (char *) malloc(buf->size + 1);
