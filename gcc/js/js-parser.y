@@ -40,6 +40,7 @@ extern int js_lex (void);
 int js_error(const char *str);
 
 location_t CURRENT_LOCATION(void);
+#define LOC CURRENT_LOCATION()
 #define DEBUG( ... ) \
 fprintf(stderr, "JS(%d) ", CURRENT_LOCATION());\
 __js_debug__( __FILE__, __LINE__, __VA_ARGS__ );
@@ -237,10 +238,10 @@ VariableDeclarationList
 
 VariableDeclaration 
     : Identifier {
-        $$ = js_build2(OP_EQLET, TyValue, $1, JS_UNDEFINED);
+        $$ = js_build2(LOC, OP_LET, TyValue, $1, JS_UNDEFINED);
     }
     | Identifier Initialiser {
-        $$ = js_build2(OP_EQLET, TyValue, $1, $2);
+        $$ = js_build2(LOC, OP_LET, TyValue, $1, $2);
     }
     ;
 
@@ -255,10 +256,10 @@ VariableDeclarationListNoIn
 
 VariableDeclarationNoIn
     : Identifier {
-        $$ = js_build2(OP_EQLET, TyValue, $1, JS_UNDEFINED);
+        $$ = js_build2(LOC, OP_LET, TyValue, $1, JS_UNDEFINED);
     }
     | Identifier InitialiserNoIn {
-        $$ = js_build2(OP_EQLET, TyValue, $1, $2);
+        $$ = js_build2(LOC, OP_LET, TyValue, $1, $2);
     }
     ;
 
@@ -277,19 +278,19 @@ InitialiserNoIn
 AssignmentExpression 
     : ConditionalExpression {}
     | LeftHandSideExpression AssignmentOperator AssignmentExpression {
-        $$ = js_build2($2, TyValue, $1, $3);
+        $$ = js_build2(LOC, $2, TyValue, $1, $3);
     }
     ;
 
 AssignmentExpressionNoIn
     : ConditionalExpressionNoIn {}
     | LeftHandSideExpression AssignmentOperator AssignmentExpressionNoIn {
-        $$ = js_build2($2, TyValue, $1, $3);
+        $$ = js_build2(LOC, $2, TyValue, $1, $3);
     }
     ;
 
 AssignmentOperator
-    : EQ_LET     /*    = */ { $$ = OP_EQLET; }
+    : EQ_LET     /*    = */ { $$ = OP_LET; }
     | MUL_LET    /*   *= */ { $$ = OP_MULLET; }
     | DIV_LET    /*   /= */ { $$ = OP_DIVLET; }
     | REM_LET    /*   %= */ { $$ = OP_MODLET; }
@@ -324,40 +325,40 @@ ExpressionStatement
 IfStatement 
     : If LCBRACE Expression RCBRACE Statement %prec IF_WITHOUT_ELSE {
         DEBUG("IfStatement1");
-        $$ = js_build_cond($3, $5, NULL);
+        $$ = js_build_cond(LOC, $3, $5, NULL);
     }
     | If LCBRACE Expression RCBRACE Statement Else Statement {
         DEBUG("IfStatement2");
-        $$ = js_build_cond($3, $5, $7);
+        $$ = js_build_cond(LOC, $3, $5, $7);
     }
 ;
 
 IterationStatement
     : Do Statement While LCBRACE Expression RCBRACE SEMICOLON {
         DEBUG("While1");
-        $$ = js_build_loop(LOOP_DOWHILE, NULL, $5/*cond*/, NULL, $2/*body*/);
+        $$ = js_build_loop(LOC, LOOP_DOWHILE, NULL, $5/*cond*/, NULL, $2/*body*/);
     }
     | While LCBRACE Expression RCBRACE Statement {
         DEBUG("While2");
-        $$ = js_build_loop(LOOP_WHILE, NULL, $3/*cond*/, NULL, $5/*body*/);
+        $$ = js_build_loop(LOC, LOOP_WHILE, NULL, $3/*cond*/, NULL, $5/*body*/);
     }
     | For LCBRACE ExpressionNoInopt SEMICOLON Expressionopt SEMICOLON Expressionopt RCBRACE Statement {
         DEBUG("for1");
-        $$ = js_build_loop(LOOP_FOR, $3/*init*/ , $5/*cond*/, $7/*inc*/, $9/*body*/);
+        $$ = js_build_loop(LOC, LOOP_FOR, $3/*init*/ , $5/*cond*/, $7/*inc*/, $9/*body*/);
     }
 
     | For LCBRACE Var VariableDeclarationListNoIn SEMICOLON Expressionopt SEMICOLON Expressionopt RCBRACE Statement {
         DEBUG("for2");
-        $$ = js_build_loop(LOOP_FOR_VAR, $4/*init*/ , $6/*cond*/, $8/*inc*/, $10/*body*/);
+        $$ = js_build_loop(LOC, LOOP_FOR_VAR, $4/*init*/ , $6/*cond*/, $8/*inc*/, $10/*body*/);
     }
 
     | For LCBRACE LeftHandSideExpression In Expression RCBRACE Statement {
         TODO();
-        $$ = js_build_loop(LOOP_FOR_IN, $3/*init*/ , NULL, $5/*inc*/, $7/*body*/);
+        $$ = js_build_loop(LOC, LOOP_FOR_IN, $3/*init*/ , NULL, $5/*inc*/, $7/*body*/);
     }
     | For LCBRACE Var VariableDeclarationNoIn In Expression RCBRACE Statement {
         TODO();
-        $$ = js_build_loop(LOOP_FOR_VAR_IN, $4/*init*/ , NULL, $6/*inc*/, $8/*body*/);
+        $$ = js_build_loop(LOC, LOOP_FOR_VAR_IN, $4/*init*/ , NULL, $6/*inc*/, $8/*body*/);
     }
 ;
 
@@ -385,10 +386,10 @@ SEMICOLONopt
 ;
 ReturnStatement 
     : Return SEMICOLONopt {
-        $$ = js_build1(OP_RETURN, TyNone, NULL);
+        $$ = js_build1(LOC, OP_RETURN, TyNone, NULL);
     }
     | Return Expression SEMICOLONopt {
-        $$ = js_build1(OP_RETURN, TyValue, $2);
+        $$ = js_build1(LOC, OP_RETURN, TyValue, $2);
     }
 ;
 
@@ -435,7 +436,7 @@ LabelledStatement
 ThrowStatement 
     : Throw Expression {
         DEBUG("ThrowStatement");TODO();
-        $$ = js_build_nop();//js_build_throw_expr($2);
+        $$ = js_build_nop(LOC);//js_build_throw_expr($2);
     }
     ;
 
@@ -478,18 +479,18 @@ Program
 FunctionDeclaration
     : Function Identifier LCBRACE FormalParameterListopt RCBRACE LBRACE FunctionBody RBRACE {
         DEBUG("FunctionDeclaration");
-        $$ = js_build_defun($2, $4, $7);
+        $$ = js_build_defun(LOC, $2, $4, $7);
     }
     ;
 
 FunctionExpression
     :Function LCBRACE FormalParameterListopt RCBRACE LBRACE FunctionBody RBRACE {
         DEBUG("FunctionExpression1");
-        $$ = js_build_defun(NULL, $3, $6);
+        $$ = js_build_defun(LOC, NULL, $3, $6);
     }
     |Function Identifier LCBRACE FormalParameterListopt RCBRACE LBRACE FunctionBody RBRACE {
         DEBUG("FunctionExpression2");
-        $$ = js_build_defun($2, $4, $7);
+        $$ = js_build_defun(LOC, $2, $4, $7);
     }
     ;
 
@@ -534,7 +535,7 @@ SourceElement
 
 PrimaryExpression 
     : This {
-        $$ = js_build_id("this");
+        $$ = js_build_id(LOC, "this");
     }
     | Identifier {}
     | Literal {}
@@ -553,23 +554,23 @@ ArrayLiteral
     : LPARENTHESIS RPARENTHESIS {
         /* [] */
         DEBUG("ArrayLiteral1");
-        $$ = js_build_array(NULL);
+        $$ = js_build_array(LOC, NULL);
     }
     | LPARENTHESIS Elision RPARENTHESIS {
         /* [,] [a,] */
         DEBUG("ArrayLiteral2");
         TODO();
-        $$ = js_build_array(NULL);
+        $$ = js_build_array(LOC, NULL);
     }
     | LPARENTHESIS ElementList RPARENTHESIS {
         /* [a=1, v=3] */
         DEBUG("ArrayLiteral3");
-        $$ = js_build_array($2);
+        $$ = js_build_array(LOC, $2);
     }
     | LPARENTHESIS ElementList CAMMA Elisionopt RPARENTHESIS {
         /* [a, b, c] */
         DEBUG("ArrayLiteral4");
-        $$ = js_build_array($2);
+        $$ = js_build_array(LOC, $2);
     }
 ;
 
@@ -597,15 +598,15 @@ Elision
 ObjectLiteral 
     : LBRACE RBRACE {
         DEBUG("ObjectLiteral1");
-        $$ = js_build1(OP_OBJECT, TyObject, NULL);
+        $$ = js_build1(LOC, OP_OBJECT, TyObject, NULL);
     }
     | LBRACE PropertyNameAndValueList RBRACE {
         DEBUG("ObjectLiteral2");
-        $$ = js_build1(OP_OBJECT, TyObject, $2);
+        $$ = js_build1(LOC, OP_OBJECT, TyObject, $2);
     }
     | LBRACE PropertyNameAndValueList CAMMA RBRACE {
         DEBUG("ObjectLiteral3");
-        $$ = js_build1(OP_OBJECT, TyObject, $2);
+        $$ = js_build1(LOC, OP_OBJECT, TyObject, $2);
     }
     ;
 
@@ -624,8 +625,8 @@ PropertyAssignment
     : PropertyName COLON AssignmentExpression {
         jstree t;
         DEBUG("PropertyAssignment1");
-        t = js_build2(OP_FIELD, TyValue, js_build_id("this"), $1);
-        $$ = js_build2(OP_SetField, TyValue, t, $3);
+        t = js_build2(LOC, OP_FIELD, TyValue, js_build_id(LOC, "this"), $1);
+        $$ = js_build2(LOC, OP_SetField, TyValue, t, $3);
     }
     | "get" PropertyName LCBRACE RCBRACE LBRACE FunctionBody RBRACE {
         DEBUG("PropertyAssignment2");
@@ -666,13 +667,13 @@ MemberExpression
     }
     | MemberExpression DOT IdentifierName {
         //DEBUG("MemberExpression4");
-        $$ = js_build2(OP_FIELD, TyValue, $1, $3);
+        $$ = js_build2(LOC, OP_FIELD, TyValue, $1, $3);
         //$$ = js_build_propaty_expr($1, $3);
     }
     | New MemberExpression Arguments {
         /*DEBUG("MemberExpression5");*/
         //$$ = js_build_new_expr($2, $3);
-        $$ = js_build_call(OP_NEW, TyValue, $2, $3);
+        $$ = js_build_call(LOC, OP_NEW, TyValue, $2, $3);
     }
     ;
 
@@ -689,11 +690,11 @@ NewExpression
 CallExpression 
     : MemberExpression Arguments {
         DEBUG("CallExpression1");
-        $$ = js_build_call(OP_CALL, TyValue, $1, $2);
+        $$ = js_build_call(LOC, OP_CALL, TyValue, $1, $2);
     }
     | CallExpression Arguments {
         DEBUG("CallExpression2");
-        $$ = js_build_call(OP_CALL, TyValue, $1, $2);
+        $$ = js_build_call(LOC, OP_CALL, TyValue, $1, $2);
     }
     | CallExpression LPARENTHESIS Expression RPARENTHESIS {
         DEBUG("CallExpression3");
@@ -734,10 +735,10 @@ LeftHandSideExpression
 PostfixExpression
     : LeftHandSideExpression {}
     | LeftHandSideExpression PLUSPLUS {
-        $$ = js_build1(OP_POST_INC, TyValue, $1);
+        $$ = js_build1(LOC, OP_POST_INC, TyValue, $1);
     }
     | LeftHandSideExpression MINUSMINUS {
-        $$ = js_build1(OP_POST_DEC, TyValue, $1);
+        $$ = js_build1(LOC, OP_POST_DEC, TyValue, $1);
     }
     ;
 
@@ -745,40 +746,40 @@ UnaryExpression
     : PostfixExpression {}
     | Delete UnaryExpression {
         DEBUG("delete");
-        $$ = js_build_call(OP_CALL, TyValue, js_build_id("delete"), $2);
+        $$ = js_build_call(LOC, OP_CALL, TyValue, js_build_id(LOC, "delete"), $2);
     }
     | Void UnaryExpression {
         DEBUG("void");
-        $$ = js_build_call(OP_CALL, TyValue, js_build_id("void"), $2);
+        $$ = js_build_call(LOC, OP_CALL, TyValue, js_build_id(LOC, "void"), $2);
     }
     | Typeof UnaryExpression {
         DEBUG("Typeof");
-        $$ = js_build_call(OP_CALL, TyValue, js_build_id("typeof"), $2);
+        $$ = js_build_call(LOC, OP_CALL, TyValue, js_build_id(LOC, "typeof"), $2);
     }
     | PLUSPLUS   UnaryExpression {
         DEBUG("++ UnaryExpression");
-        $$ = js_build1(OP_PRED_INC, TyValue, $2);
+        $$ = js_build1(LOC, OP_PRED_INC, TyValue, $2);
     }
     | MINUSMINUS UnaryExpression {
         DEBUG("-- UnaryExpression");
-        $$ = js_build1(OP_PRED_DEC, TyValue, $2);
+        $$ = js_build1(LOC, OP_PRED_DEC, TyValue, $2);
     }
     | ADD  UnaryExpression {
         DEBUG("+ val");
-        $$ = js_build2(OP_Plus, TyValue, $2, NULL);
+        $$ = js_build2(LOC, OP_Plus, TyValue, $2, NULL);
     }
     | SUB  UnaryExpression {
         DEBUG("- val");
-        $$ = js_build2(OP_Minus, TyValue, $2, NULL);
+        $$ = js_build2(LOC, OP_Minus, TyValue, $2, NULL);
     }
     | INV  UnaryExpression {
         DEBUG("INV val");
         TODO();
-        //$$ = js_build1(OP_Inv, TyValue, $2);
+        //$$ = js_build1(LOC, OP_Inv, TyValue, $2);
     }
     | NOT  UnaryExpression {
         DEBUG("NOT UnaryExpression");
-        $$ = js_build1(OP_Not, TyValue, $2);
+        $$ = js_build1(LOC, OP_Not, TyValue, $2);
     }
     ;
 
@@ -786,15 +787,15 @@ MultiplicativeExpression
     : UnaryExpression
     | MultiplicativeExpression MUL UnaryExpression {
         DEBUG("MultiplicativeExpression1");
-        $$ = js_build2(OP_Mul, TyValue, $1, $3);
+        $$ = js_build2(LOC, OP_Mul, TyValue, $1, $3);
     }
     | MultiplicativeExpression DIV UnaryExpression {
         debug0("MultiplicativeExpression2");
-        $$ = js_build2(OP_Div, TyValue, $1, $3);
+        $$ = js_build2(LOC, OP_Div, TyValue, $1, $3);
     }
     | MultiplicativeExpression REM UnaryExpression {
         debug0("MultiplicativeExpression3");
-        $$ = js_build2(OP_Mod, TyValue, $1, $3);
+        $$ = js_build2(LOC, OP_Mod, TyValue, $1, $3);
     }
     ;
 
@@ -802,11 +803,11 @@ AdditiveExpression
     : MultiplicativeExpression
     | AdditiveExpression ADD MultiplicativeExpression {
         debug0("AdditiveExpression1");
-        $$ = js_build2(OP_Plus, TyValue, $1, $3);
+        $$ = js_build2(LOC, OP_Plus, TyValue, $1, $3);
     }
     | AdditiveExpression SUB MultiplicativeExpression {
         debug0("AdditiveExpression2");
-        $$ = js_build2(OP_Minus, TyValue, $1, $3);
+        $$ = js_build2(LOC, OP_Minus, TyValue, $1, $3);
     }
     ;
 
@@ -814,10 +815,10 @@ ShiftExpression
     : AdditiveExpression
     | ShiftExpression LSHIFT AdditiveExpression {
         DEBUG("ShiftExpression");
-        $$ = js_build2(OP_Lshift, TyValue, $1, $3);
+        $$ = js_build2(LOC, OP_Lshift, TyValue, $1, $3);
     }
     | ShiftExpression RSHIFT AdditiveExpression {
-        $$ = js_build2(OP_Rshift, TyValue, $1, $3);
+        $$ = js_build2(LOC, OP_Rshift, TyValue, $1, $3);
     }
     | ShiftExpression SHIFT  AdditiveExpression {
         TODO();
@@ -827,16 +828,16 @@ ShiftExpression
 RelationalExpression 
     : ShiftExpression
     | RelationalExpression LT  ShiftExpression {
-        $$ = js_build2(OP_LT, TyBoolean, $1, $3);
+        $$ = js_build2(LOC, OP_LT, TyBoolean, $1, $3);
     }
     | RelationalExpression GT  ShiftExpression {
-        $$ = js_build2(OP_GT, TyBoolean, $1, $3);
+        $$ = js_build2(LOC, OP_GT, TyBoolean, $1, $3);
     }
     | RelationalExpression LTE ShiftExpression {
-        $$ = js_build2(OP_LE, TyBoolean, $1, $3);
+        $$ = js_build2(LOC, OP_LE, TyBoolean, $1, $3);
     }
     | RelationalExpression GTE ShiftExpression {
-        $$ = js_build2(OP_GE, TyBoolean, $1, $3);
+        $$ = js_build2(LOC, OP_GE, TyBoolean, $1, $3);
     }
     | RelationalExpression Instanceof ShiftExpression {
         TODO();
@@ -849,16 +850,16 @@ RelationalExpression
 RelationalExpressionNoIn
     : ShiftExpression
     | RelationalExpression LT  ShiftExpression {
-        $$ = js_build2(OP_LT, TyBoolean, $1, $3);
+        $$ = js_build2(LOC, OP_LT, TyBoolean, $1, $3);
     }
     | RelationalExpression GT  ShiftExpression {
-        $$ = js_build2(OP_GT, TyBoolean, $1, $3);
+        $$ = js_build2(LOC, OP_GT, TyBoolean, $1, $3);
     }
     | RelationalExpression LTE ShiftExpression {
-        $$ = js_build2(OP_LE, TyBoolean, $1, $3);
+        $$ = js_build2(LOC, OP_LE, TyBoolean, $1, $3);
     }
     | RelationalExpression GTE ShiftExpression {
-        $$ = js_build2(OP_GE, TyBoolean, $1, $3);
+        $$ = js_build2(LOC, OP_GE, TyBoolean, $1, $3);
     }
     | RelationalExpression Instanceof ShiftExpression {
         TODO();
@@ -868,60 +869,60 @@ RelationalExpressionNoIn
 EqualityExpression 
     : RelationalExpression
     | EqualityExpression EQEQ   RelationalExpression {
-        $$ = js_build2(OP_EQ, TyBoolean, $1, $3);
+        $$ = js_build2(LOC, OP_EQ, TyBoolean, $1, $3);
     }
     | EqualityExpression NEQ    RelationalExpression {
-        $$ = js_build2(OP_NE, TyBoolean, $1, $3);
+        $$ = js_build2(LOC, OP_NE, TyBoolean, $1, $3);
     }
     | EqualityExpression STREQ  RelationalExpression {
-        $$ = js_build2(OP_STREQ, TyBoolean, $1, $3);
+        $$ = js_build2(LOC, OP_STREQ, TyBoolean, $1, $3);
     }
     | EqualityExpression STRNEQ RelationalExpression {
-        $$ = js_build2(OP_STRNE, TyBoolean, $1, $3);
+        $$ = js_build2(LOC, OP_STRNE, TyBoolean, $1, $3);
     }
     ;
 
 EqualityExpressionNoIn
     : RelationalExpressionNoIn
     | EqualityExpressionNoIn EQEQ   RelationalExpressionNoIn {
-        $$ = js_build2(OP_EQ, TyBoolean, $1, $3);
+        $$ = js_build2(LOC, OP_EQ, TyBoolean, $1, $3);
     }
     | EqualityExpressionNoIn NEQ    RelationalExpressionNoIn {
-        $$ = js_build2(OP_NE, TyBoolean, $1, $3);
+        $$ = js_build2(LOC, OP_NE, TyBoolean, $1, $3);
     }
     | EqualityExpressionNoIn STREQ  RelationalExpressionNoIn {
-        $$ = js_build2(OP_STREQ, TyBoolean, $1, $3);
+        $$ = js_build2(LOC, OP_STREQ, TyBoolean, $1, $3);
     }
     | EqualityExpressionNoIn STRNEQ RelationalExpressionNoIn {
-        $$ = js_build2(OP_STRNE, TyBoolean, $1, $3);
+        $$ = js_build2(LOC, OP_STRNE, TyBoolean, $1, $3);
     }
     ;
 
 BitwiseANDExpression 
     : EqualityExpression
     | BitwiseANDExpression AND EqualityExpression {
-        $$ = js_build2(OP_And, TyValue, $1, $3);
+        $$ = js_build2(LOC, OP_And, TyValue, $1, $3);
     }
     ;
 
 BitwiseXORExpression 
     : BitwiseANDExpression
     | BitwiseXORExpression XOR BitwiseANDExpression {
-        $$ = js_build2(OP_Xor, TyValue, $1, $3);
+        $$ = js_build2(LOC, OP_Xor, TyValue, $1, $3);
     }
     ;
 
 BitwiseORExpression 
     : BitwiseXORExpression
     | BitwiseORExpression OR BitwiseXORExpression {
-        $$ = js_build2(OP_Or, TyValue, $1, $3);
+        $$ = js_build2(LOC, OP_Or, TyValue, $1, $3);
     }
     ;
 
 LogicalANDExpression 
     : BitwiseORExpression {}
     | LogicalANDExpression LAND BitwiseORExpression {
-        $$ = js_build2(OP_LAND, TyValue, $1, $3);
+        $$ = js_build2(LOC, OP_LAND, TyValue, $1, $3);
     }
     ;
 
@@ -929,42 +930,42 @@ LogicalORExpression
     : LogicalANDExpression {}
     | LogicalORExpression LOR LogicalANDExpression {
         DEBUG("LogicalORExpression");
-        $$ = js_build2(OP_LOR, TyValue, $1, $3);
+        $$ = js_build2(LOC, OP_LOR, TyValue, $1, $3);
     }
     ;
 
 BitwiseANDExpressionNoIn
     : EqualityExpressionNoIn {}
     | BitwiseANDExpressionNoIn AND EqualityExpressionNoIn {
-        $$ = js_build2(OP_And, TyValue, $1, $3);
+        $$ = js_build2(LOC, OP_And, TyValue, $1, $3);
     }
     ;
 
 BitwiseXORExpressionNoIn
     : BitwiseANDExpressionNoIn {}
     | BitwiseXORExpressionNoIn XOR BitwiseANDExpressionNoIn {
-        $$ = js_build2(OP_Xor, TyValue, $1, $3);
+        $$ = js_build2(LOC, OP_Xor, TyValue, $1, $3);
     }
     ;
 
 BitwiseORExpressionNoIn
     : BitwiseXORExpressionNoIn {}
     | BitwiseORExpressionNoIn OR BitwiseXORExpressionNoIn {
-        $$ = js_build2(OP_Or, TyValue, $1, $3);
+        $$ = js_build2(LOC, OP_Or, TyValue, $1, $3);
     }
     ;
 
 LogicalANDExpressionNoIn
     : BitwiseORExpressionNoIn
     | LogicalANDExpressionNoIn LAND BitwiseORExpressionNoIn {
-        $$ = js_build2(OP_LAND, TyValue, $1, $3);
+        $$ = js_build2(LOC, OP_LAND, TyValue, $1, $3);
     }
     ;
 
 LogicalORExpressionNoIn
     : LogicalANDExpressionNoIn
     | LogicalORExpressionNoIn LOR LogicalANDExpressionNoIn {
-        $$ = js_build2(OP_LOR, TyValue, $1, $3);
+        $$ = js_build2(LOC, OP_LOR, TyValue, $1, $3);
     }
     ;
 

@@ -126,6 +126,7 @@ typedef struct GTY(()) gjs_tree_t {
 #define JSTREE_COMMON_STRING(x) (((gjs_tree_common*)x)->o.svalue)
 
 #define JSTREE_TYPE(x)  ((x)->T)
+#define JSTREE_LOC(x)   ((x)->loc)
 #define JSTREE_OP(x)    ((x)->op)
 #define JSTREE_CHAIN(x) ((x)->next)
 #define JSTREE_LHS(x)   ((x)->l.t)
@@ -147,7 +148,7 @@ typedef struct gjs_tree_t * jstree;
 DEF_VEC_P (jstree);
 DEF_VEC_ALLOC_P (jstree, gc);
 
-extern jstree js_build_nulval(int n/*n=0=>null, n=1=>undefined*/);
+extern jstree js_build_nulval(location_t loc, int n/*n=0=>null, n=1=>undefined*/);
 static inline jstree jstree_alloc_(void)
 {
   jstree t = (gjs_tree_t*) (xmalloc(sizeof(gjs_tree_t)));
@@ -156,7 +157,7 @@ static inline jstree jstree_alloc_(void)
 }
 extern jstree global_tree;
 
-#define JS_NULL      (js_build_nulval(0))
-#define JS_UNDEFINED (js_build_nulval(1))
+#define JS_NULL      (js_build_nulval(LOC, 0))
+#define JS_UNDEFINED (js_build_nulval(LOC, 1))
 
 #endif /* end of include guard: JS_TREE_H */

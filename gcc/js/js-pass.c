@@ -56,6 +56,7 @@ typedef struct js_typeinfo {
 
 typedef struct jscontext {
     int id;
+    void *data;
     FILE *fp;
     js_typeinfo type_info;
     js_typeinfo func_info;
@@ -63,15 +64,18 @@ typedef struct jscontext {
 
 jstree jstree_pass_dump(jstree t, jsctx *ctx);
 jstree jstree_pass_collect_typeinfo(jstree t, jsctx *ctx);
+jstree jstree_pass_check_variables(jstree t, jsctx *ctx);
+jstree jstree_pass_check_function_return(jstree t, jsctx *ctx);
 jstree jstree_pass_emit_generic(jstree t, jsctx *ctx);
 
 typedef jstree (*jstree_pass_t)(jstree, jsctx*);
 typedef jstree (*ftree_node)   (jstree, jsctx*);
 typedef jstree (*ftree_next)   (jstree, jsctx*);
 static jstree_pass_t jstree_pass_manager[] = {
-    &jstree_pass_dump,
     &jstree_pass_collect_typeinfo,
-    &jstree_pass_collect_typeinfo,
+    &jstree_pass_check_function_return,
+    &jstree_pass_check_variables,
+    //&jstree_pass_dump,
     &jstree_pass_emit_generic,
     NULL
 };
@@ -80,7 +84,7 @@ void jstree_write_globals(void)
 {
   jstree decls = global_tree;
   jstree_pass_t *p;
-  jsctx ctx = {0, NULL, NULL, NULL};
+  jsctx ctx = {0, NULL, NULL, NULL, NULL};
   for (p = jstree_pass_manager; *p != NULL; ++p) {
     decls = (*p)(decls, &ctx);
   }
@@ -101,10 +105,6 @@ static jstree jstree_pass_iterate_default(jstree t, jsctx *ctx ATTRIBUTE_UNUSED)
   return JSTREE_CHAIN(t);
 }
 
-#include "js-pass-dump.c"
-#include "js-pass-emit.c"
-#define FIND_FUNCTION(stmt, ctx) jstree_pass_iterate(stmt, ctx, FIND_FUNCTION_TREE, jstree_pass_iterate_default)
-
 static int list_size(jstree decl)
 {
   jstree t;
@@ -114,6 +114,82 @@ static int list_size(jstree decl)
   }
   return i;
 }
+
+#define JSCTX_APPEND(ctx, F, info) do {\
+    js_typeinfo t_ = ctx->F;\
+      if (t_ == NULL) {\
+          ctx->F = info;\
+      } else {\
+          while (t_->next) {\
+              t_ = t_->next;\
+          }\
+          t_->next = info;\
+      }\
+} while(0)
+
+static void DUMP_FUNCINFO(jsctx *ctx)
+{
+  int i, argc;
+  jstree name, body, argv;
+  js_typeinfo info = ctx->func_info;
+  while (info) {
+      name = info->this_node;
+      body = info->body_node;
+      argv = info->fields_node;
+      argc = info->fields_size;
+      fprintf(stderr, (info->retTy == TyNone)?"void ":"var  ");
+      fprintf(stderr, "function %s (", JSTREE_COMMON_STRING(name));
+      for (i = 0; i < argc; i++) {
+          if (JSTREE_OP(argv) == OP_IDENTIFIER) {
+              fprintf(stderr, "%s", JSTREE_COMMON_STRING(argv));
+          } else {
+              fprintf(stderr, "arg%d", i);
+          }
+          if (i < argc-1) {
+              fprintf(stderr, ", ");
+          }
+          argv = argv->next;
+      }
+      fprintf(stderr, ") { body:%p }\n", (void*)body);
+      info = info->next;
+  }
+}
+
+static void DUMP_TYPEINFO(jsctx *ctx)
+{
+  int i, j, argc;
+  jstree name, body, field;
+  js_typeinfo info = ctx->type_info;
+  i = 0;
+  while (info) {
+      name = info->this_node;
+      body = info->body_node;
+      field = info->fields_node;
+      argc = info->fields_size;
+      fprintf(stderr, "type type%d {\n", i++);
+      for (j = 0; j < argc; j++) {
+          fprintf(stderr, "\tfield%d:", j);
+          if (JSTREE_OP(field) == OP_SetField) {
+              jstree l = JSTREE_LHS(field);
+              jstree r = JSTREE_RHS(l);
+              jstree o = JSTREE_RHS(field);
+              fprintf(stderr, "%s = %p;\n", JSTREE_COMMON_STRING(r), (void*)o);
+          } else if (JSTREE_OP(field) == OP_FIELD) {
+              asm volatile("int3");
+          } else {
+              fprintf(stderr, "(%p)", (void*)field);
+          }
+          field = field->next;
+      }
+      fprintf(stderr, "}\n");
+      info = info->next;
+  }
+}
+
+
+#include "./js-pass-dump.c"
+#include "./js-pass-checkreturn.c"
+#include "./js-pass-emit.c"
 
 static JSType *JSTypeList_init(int argc)
 {
@@ -134,19 +210,8 @@ static js_typeinfo NEW_TYPEINFO(jstree name, jstree args, jstree body)
   info->fields_node = args;
   info->fields_size = list_size(args);
   info->fields      = JSTypeList_init(info->fields_size);
+  info->retTy = TyNone;
   return info;
-}
-
-#define JSCTX_APPEND(ctx, F, info) {\
-    js_typeinfo t_ = ctx->F;\
-      if (t_ == NULL) {\
-          ctx->F = info;\
-      } else {\
-          while (t_->next) {\
-              t_ = t_->next;\
-          }\
-          t_->next = info;\
-      }\
 }
 
 static bool jsctx_isDefined(jsctx *ctx, jstree t)
@@ -205,6 +270,7 @@ static bool jsctx_isSameShape(jsctx *ctx, jstree t)
   }
   return false;
 }
+
 static void jsctx_addShape(jsctx *ctx, jstree t)
 {
   if (!jsctx_isSameShape(ctx, t)) {
@@ -215,6 +281,7 @@ static void jsctx_addShape(jsctx *ctx, jstree t)
   }
 }
 
+#define FIND_FUNCTION(stmt, ctx) jstree_pass_iterate(stmt, ctx, FIND_FUNCTION_TREE, jstree_pass_iterate_default)
 static jstree FIND_FUNCTION_TREE(jstree t, jsctx *ctx)
 {
   switch(JSTREE_OP(t)) {
@@ -294,72 +361,193 @@ static jstree FIND_FUNCTION_TREE(jstree t, jsctx *ctx)
   return t;
 }
 
-static void DUMP_FUNCINFO(jsctx *ctx)
-{
-  int i, argc;
-  jstree name, body, argv;
-  js_typeinfo info = ctx->func_info;
-  while (info) {
-      name = info->this_node;
-      body = info->body_node;
-      argv = info->fields_node;
-      argc = info->fields_size;
-      fprintf(stderr, "function %s (", JSTREE_COMMON_STRING(name));
-      for (i = 0; i < argc; i++) {
-          if (JSTREE_OP(argv) == OP_IDENTIFIER) {
-              fprintf(stderr, "%s", JSTREE_COMMON_STRING(argv));
-          } else {
-              fprintf(stderr, "arg%d", i);
-          }
-          if (i < argc-1) {
-              fprintf(stderr, ", ");
-          }
-          argv = argv->next;
-      }
-      fprintf(stderr, ") { body:%p }\n", (void*)body);
-      info = info->next;
-  }
-}
-
-static void DUMP_TYPEINFO(jsctx *ctx)
-{
-  int i, j, argc;
-  jstree name, body, field;
-  js_typeinfo info = ctx->type_info;
-  i = 0;
-  while (info) {
-      name = info->this_node;
-      body = info->body_node;
-      field = info->fields_node;
-      argc = info->fields_size;
-      fprintf(stderr, "type type%d {\n", i++);
-      for (j = 0; j < argc; j++) {
-          fprintf(stderr, "\tfield%d:", j);
-          if (JSTREE_OP(field) == OP_SetField) {
-              jstree l = JSTREE_LHS(field);
-              jstree r = JSTREE_RHS(l);
-              jstree o = JSTREE_RHS(field);
-              fprintf(stderr, "%s = %p;\n", JSTREE_COMMON_STRING(r), (void*)o);
-          } else if (JSTREE_OP(field) == OP_FIELD) {
-              asm volatile("int3");
-          } else {
-              fprintf(stderr, "(%p)", (void*)field);
-          }
-          field = field->next;
-      }
-      fprintf(stderr, "}\n");
-      info = info->next;
-  }
-}
-
 jstree jstree_pass_collect_typeinfo(jstree t, jsctx *ctx)
 {
-  fprintf(stderr, "**jstree_pass_collect_typeinfo {\n");
+  /*fprintf(stderr, "**jstree_pass_collect_typeinfo {\n");*/
   FIND_FUNCTION(t, ctx);
-  DUMP_FUNCINFO(ctx);
-  //DUMP_TYPEINFO(ctx);
-  fprintf(stderr, "\n}\n");
+  /*DUMP_TYPEINFO(ctx);*/
+  /*fprintf(stderr, "\n}\n");*/
   return t;
 }
-
 #undef FIND_FUNCTION
+
+
+#define CHECK_VAR(stmt, ctx) jstree_pass_iterate(stmt, ctx, CHECK_VAR_TREE, jstree_pass_iterate_default)
+
+typedef enum js_scope {
+    JS_LOCAL,
+    JS_PARAM,
+    JS_FVAR,
+    JS_GLOBAL
+} js_scope;
+
+static jstree find_symbol_or_add_newsym(jstree t, jsctx *ctx)
+{
+  TODO();
+  return NULL;
+}
+static jstree find_symbol(jstree t, jsctx *ctx)
+{
+  TODO();
+  return NULL;
+}
+
+static jstree verify_lhs(jstree lhs, jsctx *ctx)
+{
+  if (JSTREE_OP(lhs) == OP_IDENTIFIER) {
+      TODO();
+      return find_symbol_or_add_newsym(lhs, ctx);
+  }
+  else if (JSTREE_OP(lhs) == OP_FIELD) {
+      TODO();
+  }
+  else if (JSTREE_OP(lhs) == OP_SetField) {
+      TODO();
+  }
+  else if (JSTREE_OP(lhs) == OP_GetField) {
+      TODO();
+  }
+  return lhs;
+}
+static jstree verify_rhs(jstree rhs, jsctx *ctx)
+{
+  if (JSTREE_OP(rhs) == OP_IDENTIFIER) {
+      return find_symbol(rhs, ctx);
+  }
+  else if (JSTREE_OP(rhs) == OP_FIELD) {
+      TODO();
+  }
+  else if (JSTREE_OP(rhs) == OP_SetField) {
+      TODO();
+  }
+  else if (JSTREE_OP(rhs) == OP_GetField) {
+      TODO();
+  }
+  return rhs;
+}
+
+static void SCOPE_NEW(jsctx *ctx, jstree vals)
+{
+}
+static void SCOPE_DISPOSE(jsctx *ctx)
+{
+}
+
+static jstree CHECK_VAR_TREE(jstree t, jsctx *ctx)
+{
+  switch(JSTREE_OP(t)) {
+    case OP_ARRAY:
+      CHECK_VAR(JSTREE_LHS(t), ctx);
+      break;
+    case OP_OBJECT:
+      CHECK_VAR(JSTREE_LHS(t), ctx);
+      break;
+    case OP_LET:
+      verify_lhs(JSTREE_LHS(t), ctx);
+      verify_rhs(JSTREE_RHS(t), ctx);
+      break;
+    case OP_DEFUN:
+        {
+          SCOPE_NEW(ctx, JSTREE_LHS(JSTREE_RHS(t)));
+          CHECK_VAR(JSTREE_RHS(JSTREE_RHS(t)), ctx);
+          SCOPE_DISPOSE(ctx);
+        }
+      break;
+    case OP_NEW:
+      CHECK_VAR(JSTREE_LHS(t), ctx);
+      if (JSTREE_RHS(t)) {
+          CHECK_VAR(JSTREE_RHS(t), ctx);
+      }
+      fprintf(stderr, "))");
+      break;
+    case OP_IDENTIFIER:
+      fprintf(stderr, "id:%s", JSTREE_COMMON_STRING(t));
+      break;
+    case OP_PARM:
+      fprintf(stderr, "param=%p", (void*)t);
+      break;
+    case OP_FIELD:
+      CHECK_VAR(JSTREE_LHS(t), ctx);
+      fprintf(stderr, ".");
+      CHECK_VAR(JSTREE_RHS(t), ctx);
+      break;
+    case OP_GetField:
+      fprintf(stderr, "get ");
+      CHECK_VAR(JSTREE_LHS(t), ctx);
+      fprintf(stderr, ".");
+      CHECK_VAR(JSTREE_RHS(t), ctx);
+      break;
+    case OP_SetField:
+      fprintf(stderr, "set ");
+      CHECK_VAR(JSTREE_LHS(t), ctx);
+      fprintf(stderr, "=");
+      CHECK_VAR(JSTREE_RHS(t), ctx);
+      break;
+    case OP_CALL:
+      fprintf(stderr, "(call (");
+      CHECK_VAR(JSTREE_LHS(t), ctx);
+      fprintf(stderr, " ");
+      if (JSTREE_RHS(t)) {
+          CHECK_VAR(JSTREE_RHS(t), ctx);
+      }
+      fprintf(stderr, "))");
+      break;
+    case OP_LOOP:
+      /* loop { */
+      SCOPE_NEW(ctx, NULL);
+      CHECK_VAR(JSTREE_LHS(t), ctx);
+      SCOPE_DISPOSE(ctx);
+      /* } */
+      break;
+    case OP_EXIT:
+      fprintf(stderr, "exit ");
+      CHECK_VAR(JSTREE_LHS(t), ctx);
+      fprintf(stderr, ";");
+      break;
+    case OP_RETURN:
+      verify_rhs(JSTREE_LHS(t), ctx);
+      break;
+    case OP_COND:
+      /* if (*/
+      SCOPE_NEW(ctx, NULL);
+      CHECK_VAR(JSTREE_LHS(t), ctx);
+      /* ) then { */
+      CHECK_VAR(JSTREE_LHS(JSTREE_RHS(t)), ctx);
+      /* } else { */
+      CHECK_VAR(JSTREE_RHS(JSTREE_RHS(t)), ctx);
+      SCOPE_DISPOSE(ctx);
+      /* } */
+      break;
+    case OP_EQLET: case OP_MULLET: case OP_DIVLET: case OP_MODLET:
+    case OP_ADDLET: case OP_SUBLET: case OP_LSFTLET: case OP_RSFTLET:
+    case OP_SHFTLET: case OP_ANDLET: case OP_XORLET: case OP_ORLET:
+      asm volatile("int3");
+      CHECK_VAR(JSTREE_LHS(t), ctx);
+      CHECK_VAR(JSTREE_RHS(t), ctx);
+      break;
+    case OP_Plus: case OP_Minus: case OP_Mul: case OP_Div: case OP_Mod:
+    case OP_Lshift: case OP_Rshift: case OP_Shift: case OP_Or: case OP_Xor:
+    case OP_And: case OP_Not: case OP_LAND: case OP_LOR:
+    case OP_LT: case OP_LE: case OP_GT: case OP_GE:
+    case OP_EQ: case OP_NE: case OP_STREQ: case OP_STRNE:
+      CHECK_VAR(JSTREE_LHS(t), ctx);
+      CHECK_VAR(JSTREE_RHS(t), ctx);
+      break;
+    case OP_PRED_INC: case OP_PRED_DEC:
+    case OP_POST_INC: case OP_POST_DEC:
+      CHECK_VAR(JSTREE_LHS(t), ctx);
+      break;
+    default:
+      fprintf(stderr, "'OP=%d, %p'", JSTREE_OP(t), (void*)t);
+      break;
+  }
+  return t;
+}
+jstree jstree_pass_check_variables(jstree t, jsctx *ctx)
+{
+  fprintf(stderr, "**jstree_pass_check_variables {\n");
+  CHECK_VAR(t, ctx);
+  fprintf(stderr, "}\n");
+  return t;
+}
+#undef CHECK_VAR

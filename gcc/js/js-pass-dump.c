@@ -170,4 +170,4 @@ jstree jstree_pass_dump(jstree t, jsctx *ctx)
   ctx->fp = NULL;
   return t;
 }
-
+#undef DUMP_TREE

@@ -27,6 +27,8 @@
 #include "js-tree.h"
 #include "y.js.h"
 
+extern location_t CURRENT_LOCATION(void);
+#define LOC CURRENT_LOCATION()
 extern int js_parse (void);
 int js_wrap (void);
 int js_error (const char *);
@@ -47,15 +49,15 @@ static int REGEXP_ACTION(char *yytext);
 
 %%
 <INITIAL>"null"       {
-    js_lval.token = js_build_nulval(0);
+    js_lval.token = js_build_nulval(LOC, 0);
     return T_NULL;
 }
 <INITIAL>"true"       {
-    js_lval.token = js_build_bool(1);
+    js_lval.token = js_build_bool(LOC, 1);
     return T_TRUE;
 }
 <INITIAL>"false"      {
-    js_lval.token = js_build_bool(0);
+    js_lval.token = js_build_bool(LOC, 0);
     return T_FALSE;
 }
 
@@ -164,29 +166,29 @@ static int REGEXP_ACTION(char *yytext);
 }
 <INITIAL>[A-Za-z_$][A-Za-z_0-9]* {
     /*debug("id=%s", yytext);*/
-    js_lval.token = js_build_id(yytext);
+    js_lval.token = js_build_id(LOC, yytext);
     return IdentifierName;
 }
 <INITIAL>[1-9][0-9]* {
     int temp;
     sscanf(yytext, "%d", &temp);
-    js_lval.token = js_build_int(temp);
+    js_lval.token = js_build_int(LOC, temp);
     return IntegerLiteral;
 }
 <INITIAL>(0[Xx])?[0-9a-zA-Z]+ {
     unsigned int temp;
     sscanf(yytext, "%x", &temp);
-    js_lval.token = js_build_int(temp);
+    js_lval.token = js_build_int(LOC, temp);
     return HexIntegerLiteral;
 }
 <INITIAL>[-+]?[0-9]+(\.[0-9]*)([eE][-+]?[0-9]+)? {
-    js_lval.token = js_build_float_str(yytext);
+    js_lval.token = js_build_float_str(LOC, yytext);
     return FloatLiteral;
 }
 
 <DoubleStringCharacters>\" {
     BEGIN INITIAL;
-    js_lval.token = js_build_string(buf_tochar());
+    js_lval.token = js_build_string(LOC, buf_tochar());
     return StringLiteral;
 }
 <DoubleStringCharacters>\n  {
@@ -217,7 +219,7 @@ static int REGEXP_ACTION(char *yytext);
 
 <SingleStringCharacters>\' {
     BEGIN INITIAL;
-    js_lval.token = js_build_string(buf_tochar());
+    js_lval.token = js_build_string(LOC, buf_tochar());
     return StringLiteral;
 }
 <SingleStringCharacters>\n  {

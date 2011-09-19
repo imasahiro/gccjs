@@ -40,9 +40,10 @@ along with GCC; see the file COPYING3.  If not see
 #include "gjs.h"
 #include "js-op.h"
 
-static jstree JSTREE_NEW(JSType type, JSOperator op, jstree lhs, jstree rhs)
+static jstree JSTREE_NEW(location_t loc, JSType type, JSOperator op, jstree lhs, jstree rhs)
 {
   jstree expr = JSTREE_ALLOC();
+  JSTREE_LOC(expr) = loc;
   JSTREE_TYPE(expr) = type;
   JSTREE_OP(expr)   = op;
   JSTREE_LHS(expr) = lhs;
@@ -50,8 +51,16 @@ static jstree JSTREE_NEW(JSType type, JSOperator op, jstree lhs, jstree rhs)
   JSTREE_CHAIN(expr) = NULL;
   return expr;
 }
+static gjs_tree_common *JSTREE_COMMON_NEW(location_t loc, JSType type, JSOperator op)
+{
+  gjs_tree_common *node = JSTREE_COMMON_ALLOC();
+  JSTREE_LOC(node) = loc;
+  JSTREE_TYPE(node) = type;
+  JSTREE_OP(node)   = op;
+  return node;
+}
 
-jstree js_build_id(const char *str)
+jstree js_build_id(location_t loc, const char *str)
 {
   gjs_tree_common *id;
   char *name = xstrdup(str);
@@ -61,107 +70,98 @@ jstree js_build_id(const char *str)
           name[i] = '_';
       }
   }
-  id = JSTREE_COMMON_ALLOC();
-  JSTREE_TYPE(id) = TyValue;
-  JSTREE_OP(id)   = OP_IDENTIFIER;
+  id = JSTREE_COMMON_NEW(loc, TyValue, OP_IDENTIFIER);
   JSTREE_COMMON_STRING(id) = name;
   return (jstree)id;
 }
 
-jstree js_build_int(int val)
+jstree js_build_int(location_t loc, int val)
 {
   gjs_tree_common *n;
-  n = JSTREE_COMMON_ALLOC();
-  JSTREE_TYPE(n) = TyInt;
-  JSTREE_OP(n) = OP_INTEGER;
+  n = JSTREE_COMMON_NEW(loc, TyInt, OP_INTEGER);
   JSTREE_COMMON_INT(n) = val;
   return (jstree) n;
 }
 
-jstree js_build_bool(int val)
+jstree js_build_bool(location_t loc, int val)
 {
   gjs_tree_common *n;
-  n = JSTREE_COMMON_ALLOC();
-  JSTREE_TYPE(n) = TyBoolean;
-  JSTREE_OP(n) = OP_BOOL;
+  n = JSTREE_COMMON_NEW(loc, TyBoolean, OP_BOOL);
   JSTREE_COMMON_INT(n) = val;
   return (jstree) n;
 }
 
-jstree js_build_nulval(int v/*v=0=>null, v=1=>undefined*/)
+jstree js_build_nulval(location_t loc, int v/*v=0=>null, v=1=>undefined*/)
 {
-  gjs_tree_common *n = JSTREE_COMMON_ALLOC();
-  JSTREE_TYPE(n) = (v)?TyNULL:TyUndefined;
-  JSTREE_OP(n) = OP_NULL;
+  JSType type = (v)?TyNULL:TyUndefined;
+  JSOperator op = (v)?OP_NULL:OP_Undef;
+  gjs_tree_common *n = JSTREE_COMMON_NEW(loc, type, op);
   return (jstree) n;
 }
-jstree js_build_float_str(const char *buf)
+
+jstree js_build_float_str(location_t loc, const char *buf)
 {
   char *fstr = xstrdup(buf);
-  gjs_tree_common *n = JSTREE_COMMON_ALLOC();
-  JSTREE_TYPE(n) = TyFloat;
-  JSTREE_OP(n) = OP_FLOAT;
+  gjs_tree_common *n = JSTREE_COMMON_NEW(loc, TyFloat, OP_FLOAT);
   JSTREE_COMMON_FLOAT(n) = fstr;
   return (jstree) n;
 }
 
-jstree js_build_string(const char *str)
+jstree js_build_string(location_t loc, const char *str)
 {
   char *newstr = xstrdup(str);
   gjs_tree_common *n;
-  n = JSTREE_COMMON_ALLOC();
-  JSTREE_TYPE(n) = TyString;
-  JSTREE_OP(n) = OP_STRING;
+  n = JSTREE_COMMON_NEW(loc, TyString, OP_STRING);
   JSTREE_COMMON_FLOAT(n) = newstr;
   return (jstree) n;
 }
 
-jstree js_build_array(jstree list)
+jstree js_build_array(location_t loc, jstree list)
 {
-  return js_build1(OP_ARRAY, TyArray, list);
+  return js_build1(loc, OP_ARRAY, TyArray, list);
 }
 
-jstree js_build_nop(void)
+jstree js_build_nop(location_t loc)
 {
-  return js_build1(OP_NOP, TyNone, NULL);
+  return js_build1(loc, OP_NOP, TyNone, NULL);
 }
 
-jstree js_build1(JSOperator op, JSType type, jstree lhs)
+jstree js_build1(location_t loc, JSOperator op, JSType type, jstree lhs)
 {
-  jstree expr = JSTREE_NEW(type, op, lhs, NULL);
+  jstree expr = JSTREE_NEW(loc, type, op, lhs, NULL);
   return expr;
 }
 
-jstree js_build2(JSOperator op, JSType type, jstree lhs, jstree rhs)
+jstree js_build2(location_t loc, JSOperator op, JSType type, jstree lhs, jstree rhs)
 {
-  jstree expr = JSTREE_NEW(type, op, lhs, rhs);
+  jstree expr = JSTREE_NEW(loc, type, op, lhs, rhs);
   return expr;
 }
 
-jstree js_build3(JSOperator op, JSType type, jstree lhs, jstree mhs, jstree rhs)
+jstree js_build3(location_t loc, JSOperator op, JSType type, jstree lhs, jstree mhs, jstree rhs)
 {
-  jstree cons = JSTREE_NEW(TyNone, OP_NOP, mhs, rhs);
-  jstree expr = JSTREE_NEW(type, op, lhs, cons);
+  jstree cons = JSTREE_NEW(loc, TyNone, OP_NOP, mhs, rhs);
+  jstree expr = JSTREE_NEW(loc, type, op, lhs, cons);
   return expr;
 }
 
-jstree js_build_call(JSOperator op, JSType type, jstree f, jstree params)
+jstree js_build_call(location_t loc, JSOperator op, JSType type, jstree f, jstree params)
 {
-  jstree expr = JSTREE_NEW(type, op, f, params);
+  jstree expr = JSTREE_NEW(loc, type, op, f, params);
   return expr;
 }
 
-jstree js_build_loop(enum loopmode loop, jstree init , jstree cond, jstree inc, jstree body)
+jstree js_build_loop(location_t loc, enum loopmode loop, jstree init , jstree cond, jstree inc, jstree body)
 {
-  jstree expr = (init)? (init):JSTREE_NEW(TyNone, OP_NOP, NULL, NULL);
+  jstree expr = (init)? (init):JSTREE_NEW(loc, TyNone, OP_NOP, NULL, NULL);
   if (loop == LOOP_FOR || loop == LOOP_FOR_VAR) {
     /*
      * init -> body -> inc -> cond 
      *          |               |
      *          +---------------+
      */
-    jstree exitExpr = JSTREE_NEW(TyNone, OP_EXIT, cond, NULL);
-    jstree loopExpr = JSTREE_NEW(TyNone, OP_LOOP, body, NULL);
+    jstree exitExpr = JSTREE_NEW(loc, TyNone, OP_EXIT, cond, NULL);
+    jstree loopExpr = JSTREE_NEW(loc, TyNone, OP_LOOP, body, NULL);
     JSTREE_APPENDTAIL(body, inc);
     JSTREE_APPENDTAIL(body, exitExpr);
     JSTREE_APPENDTAIL(expr, loopExpr);
@@ -173,8 +173,8 @@ jstree js_build_loop(enum loopmode loop, jstree init , jstree cond, jstree inc, 
      *          |               |
      *          +---------------+
      */
-    jstree exitExpr = JSTREE_NEW(TyNone, OP_EXIT, cond, NULL);
-    jstree loopExpr = JSTREE_NEW(TyNone, OP_LOOP, body, NULL);
+    jstree exitExpr = JSTREE_NEW(loc, TyNone, OP_EXIT, cond, NULL);
+    jstree loopExpr = JSTREE_NEW(loc, TyNone, OP_LOOP, body, NULL);
     JSTREE_APPENDTAIL(body, inc);
     JSTREE_APPENDTAIL(body, exitExpr);
     JSTREE_APPENDTAIL(expr, loopExpr);
@@ -185,21 +185,21 @@ jstree js_build_loop(enum loopmode loop, jstree init , jstree cond, jstree inc, 
   return NULL;
 }
 
-jstree js_build_cond(jstree cond, jstree thenExpr, jstree elseExpr)
+jstree js_build_cond(location_t loc, jstree cond, jstree thenExpr, jstree elseExpr)
 {
-  jstree cons = JSTREE_NEW(TyNone, OP_NOP, thenExpr, elseExpr);
-  jstree expr = JSTREE_NEW(TyNone, OP_COND, cond, cons);
+  jstree cons = JSTREE_NEW(loc, TyNone, OP_NOP, thenExpr, elseExpr);
+  jstree expr = JSTREE_NEW(loc, TyNone, OP_COND, cond, cons);
   return expr;
 }
 
-static int tmpvalue = 0;
-jstree js_build_defun(jstree name, jstree params, jstree body)
+jstree js_build_defun(location_t loc, jstree name, jstree params, jstree body)
 {
   if (name == NULL) {
-      char buf[32] = {};
+      static int tmpvalue = 0;
+      static char buf[32] = {};
       sprintf(buf, "__tmp%d", tmpvalue++);
-      name = js_build_id(buf);
+      name = js_build_id(loc, buf);
   }
-  return js_build3(OP_DEFUN, TyFunction, name, params, body);
+  return js_build3(loc, OP_DEFUN, TyFunction, name, params, body);
 }
 
