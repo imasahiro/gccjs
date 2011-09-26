@@ -78,11 +78,7 @@ struct GTY(()) language_function {
 static
 bool js_langhook_init( void )
 {
-  build_common_tree_nodes( false );
-  build_common_tree_nodes_2( 0 );
-
-  void_list_node = build_tree_list( NULL_TREE, void_type_node );
-
+  init_builtins();
   return true;
 }
 

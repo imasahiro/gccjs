@@ -76,6 +76,7 @@ typedef enum {
     TyFunction,
     TyValue,
     TyNone,
+    TyVoid,
     TY_MAX
 } JSType;
 

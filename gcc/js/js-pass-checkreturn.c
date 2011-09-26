@@ -25,9 +25,38 @@ static jstree CHECK_RETURN_TREE(jstree t, jsctx *ctx)
   return t;
 }
 
+static void DUMP_FUNCINFO(jsctx *ctx)
+{
+  int i, argc;
+  jstree name, body, argv;
+  js_typeinfo info = ctx->func_info;
+  while (info) {
+      name = info->this_node;
+      body = info->body_node;
+      argv = info->fields_node;
+      argc = info->fields_size;
+      fprintf(stderr, (info->retTy == TyNone)?"void ":"var  ");
+      fprintf(stderr, "function %s (", JSTREE_COMMON_STRING(name));
+      for (i = 0; i < argc; i++) {
+          if (JSTREE_OP(argv) == OP_IDENTIFIER) {
+              fprintf(stderr, "%s", JSTREE_COMMON_STRING(argv));
+          } else {
+              fprintf(stderr, "arg%d", i);
+          }
+          if (i < argc-1) {
+              fprintf(stderr, ", ");
+          }
+          argv = argv->next;
+      }
+      fprintf(stderr, ") { body:%p }\n", (void*)body);
+      info = info->next;
+  }
+}
+
 jstree jstree_pass_check_function_return(jstree t, jsctx *ctx)
 {
   js_typeinfo info = ctx->func_info;
+  fprintf(stderr, "**jstree_pass_check_function_return {\n");
   while (info) {
       ctx->data = (void*)info;
       CHECK_RETURN(info->body_node, ctx);
@@ -35,6 +64,7 @@ jstree jstree_pass_check_function_return(jstree t, jsctx *ctx)
       info = info->next;
   }
   DUMP_FUNCINFO(ctx);
+  fprintf(stderr, "}\n");
   return t;
 }
 #undef CHECK_RETURN

@@ -51,7 +51,21 @@ js-buffer.o: $(GCCJS_HEADERS) $(srcdir)/js/js-buffer.c $(CONFIG_H) $(SYSTEM_H) c
 	$(CC) $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(GJS_CFLAGS) $(INCLUDES) \
 		$(LDFLAGS) -c -o $@ $(srcdir)/js/js-buffer.c
 
-js-pass.o: $(GCCJS_HEADERS) $(srcdir)/js/js-pass.c $(CONFIG_H) $(SYSTEM_H) coretypes.h $(TM_H) \
+js-builtin.o: $(GCCJS_HEADERS) $(srcdir)/js/js-builtin.c $(CONFIG_H) $(SYSTEM_H) coretypes.h $(TM_H) \
+  $(FLAGS_H) toplev.h $(GGC_H) $(TREE_H) $(DIAGNOSTIC_H) input.h options.h opts.h \
+  gt-js-js-lang.h gtype-js.h
+	$(CC) $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(GJS_CFLAGS) $(INCLUDES) \
+		$(LDFLAGS) -c -o $@ $(srcdir)/js/js-builtin.c
+
+
+GJS_PASS_SRCS = \
+$(srcdir)/js/js-pass.c \
+$(srcdir)/js/js-pass-checkreturn.c \
+$(srcdir)/js/js-pass-dump.c \
+$(srcdir)/js/js-pass-emit.c
+
+
+js-pass.o: $(GCCJS_HEADERS) $(GJS_PASS_SRCS) $(CONFIG_H) $(SYSTEM_H) coretypes.h $(TM_H) \
   $(FLAGS_H) toplev.h $(GGC_H) $(TREE_H) $(DIAGNOSTIC_H) input.h options.h opts.h \
   gt-js-js-lang.h gtype-js.h
 	$(CC) $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(GJS_CFLAGS) $(INCLUDES) \
@@ -64,9 +78,9 @@ GJS_OBJS = \
 	js-lang.o \
 	js-buffer.o \
 	js-pass.o \
+	js-builtin.o \
 	js-decl.o
 
-#	js-decl.o \
 #	js-types.o \
 #	js-vec.o \
 #	js-runtime.o

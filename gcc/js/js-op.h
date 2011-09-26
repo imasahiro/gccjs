@@ -4,6 +4,8 @@
 #define JS_OP_H
 
 extern int js_lex_parse(const char * gjs_in);
+/* js_builtin.c */
+extern void init_builtins(void);
 
 /* Premitives */
 extern jstree js_build_id(location_t loc, const char *str);
